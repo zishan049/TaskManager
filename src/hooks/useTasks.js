@@ -133,5 +133,37 @@ export const useTasks = () => {
     }
   };
 
-  return { tasks, loading, addTask, updateTask, deleteTask, fetchTaskHistory, refresh: fetchTasks };
+  const addPersonalNote = async (taskId, content) => {
+    try {
+      const username = profile?.username || user?.user_metadata?.username || 'User';
+      const { data, error } = await supabase
+        .from('task_history')
+        .insert([{
+          task_id: taskId,
+          user_id: user.id,
+          action: 'NOTE',
+          details: { content }
+        }])
+        .select('*, profiles:user_id(username, avatar_url, theme_color)')
+        .single();
+        
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  };
+
+  const deletePersonalNote = async (noteId) => {
+    try {
+      const { error } = await supabase.from('task_history').delete().eq('id', noteId);
+      return { error };
+    } catch (err) {
+      return { error: err };
+    }
+  };
+
+  return { 
+    tasks, loading, addTask, updateTask, deleteTask, fetchTaskHistory, 
+    addPersonalNote, deletePersonalNote, refresh: fetchTasks 
+  };
 };

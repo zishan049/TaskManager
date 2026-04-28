@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useTasks } from './hooks/useTasks';
-import { Sparkles, ListTodo, User, Info, LogOut, RefreshCw } from 'lucide-react';
+import { ListTodo, User, Info, LogOut, RefreshCw } from 'lucide-react';
 import MainLayout from './components/layout/MainLayout';
 import AuthPage from './pages/AuthPage';
 import TaskList from './components/tasks/TaskList';
@@ -10,6 +10,7 @@ import TeamPage from './pages/TeamPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import TaskSidebar from './components/tasks/TaskSidebar';
+import MiniCalendar from './components/ui/MiniCalendar';
 
 // Simple Error Boundary
 class ErrorBoundary extends React.Component {
@@ -53,6 +54,19 @@ function AppContent() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [calendarFilterDate, setCalendarFilterDate] = useState(null);
+
+  const visibleTasks = React.useMemo(() => {
+    if (!tasks) return [];
+    if (!calendarFilterDate) return tasks;
+    
+    return tasks.filter(t => {
+      const taskDate = new Date(t.due_date || t.created_at);
+      return taskDate.getDate() === calendarFilterDate.getDate() &&
+             taskDate.getMonth() === calendarFilterDate.getMonth() &&
+             taskDate.getFullYear() === calendarFilterDate.getFullYear();
+    });
+  }, [tasks, calendarFilterDate]);
 
   // Reset to home after login/signup popup closes
   useEffect(() => {
@@ -81,7 +95,7 @@ function AppContent() {
           <div className="dashboard">
             <section className="welcome-section">
               <div className="welcome-header">
-                <Sparkles size={24} className="accent" />
+                <img src="/favicon.svg" alt="logo" className="accent" width={24} height={24} />
                 <h2 className="welcome-title">
                   Hello, {profile?.username || user.user_metadata?.username || user.email?.split('@')[0]}
                 </h2>
@@ -114,22 +128,32 @@ function AppContent() {
               </div>
             </div>
 
-            <section className="tasks-preview" style={{ marginTop: '3rem' }}>
-              <div className="card-title">
-                <ListTodo size={18} />
-                <span>Active Tasks</span>
-              </div>
-              <TaskList 
-                tasks={tasks || []} 
-                loading={tasksLoading} 
-                onUpdate={updateTask}
-                onDelete={deleteTask}
-                onTaskClick={(task) => {
-                  setSelectedTaskId(task.id);
-                  setIsSidebarOpen(true);
-                }}
-              />
-            </section>
+            <div className="dashboard-main-grid">
+              <section className="tasks-preview">
+                <div className="card-title">
+                  <ListTodo size={18} />
+                  <span>Active Tasks</span>
+                </div>
+                <TaskList 
+                  tasks={visibleTasks} 
+                  loading={tasksLoading} 
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
+                  onTaskClick={(task) => {
+                    setSelectedTaskId(task.id);
+                    setIsSidebarOpen(true);
+                  }}
+                />
+              </section>
+
+              <aside className="dashboard-sidebar">
+                <MiniCalendar 
+                  tasks={tasks || []} 
+                  selectedDate={calendarFilterDate}
+                  onSelectDate={setCalendarFilterDate}
+                />
+              </aside>
+            </div>
           </div>
         );
       case 'team':

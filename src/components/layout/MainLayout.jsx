@@ -21,9 +21,9 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd }) => {
       <header className="header">
         <div className="header-container">
           <div className="header-left">
-            <div className="logo" onClick={() => onViewChange('home')} style={{ cursor: 'pointer' }}>
+            <div className="logo" onClick={() => onViewChange('home')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircle2 size={22} className="logo-icon" />
-              <span>TaskManager</span>
+              <span style={{ fontWeight: 'bold' }}>TaskManager</span>
             </div>
             
             <nav className="nav-links">
@@ -68,6 +68,7 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd }) => {
         </div>
       </header>
 
+      <div className="theme-watermark" aria-hidden="true" />
       
       <main className="content page-enter">
         {children}

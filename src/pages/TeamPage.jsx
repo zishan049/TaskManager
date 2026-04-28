@@ -181,7 +181,7 @@ const TeamPage = () => {
   );
 
   return (
-    <div className={`team-container page-enter ${!isMobileSidebarOpen ? 'mobile-chat-active' : ''}`}>
+    <div className={`team-container page-enter ${!isMobileSidebarOpen ? 'mobile-chat-active' : ''} ${showTeamTasks ? 'show-tasks' : ''}`}>
       <aside className={`teams-sidebar ${isMobileSidebarOpen ? 'show' : 'hide'}`}>
         <div className="sidebar-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

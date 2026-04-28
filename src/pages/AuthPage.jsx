@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckCircle2, Mail, Lock, User, AtSign, Calendar, Sparkles } from 'lucide-react';
+import { CheckCircle2, Mail, Lock, User, AtSign, Calendar } from 'lucide-react';
 
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -64,10 +64,11 @@ const AuthPage = () => {
 
   return (
     <div className="auth-page">
+      <div className="theme-watermark" aria-hidden="true" />
       <div className="auth-card page-enter">
         <div className="auth-header">
           <div className="logo" style={{ marginBottom: '2rem', justifyContent: 'center' }}>
-            <CheckCircle2 size={32} className="logo-icon" />
+            <CheckCircle2 size={32} strokeWidth={2.5} className="logo-icon" />
             <span style={{ fontSize: '1.5rem' }}>TaskManager</span>
           </div>
           <h1 className="auth-title">
@@ -149,7 +150,7 @@ const AuthPage = () => {
           <div className="modal">
             <div className="welcome-popup">
               <div className="user-avatar-large">
-                <Sparkles size={40} />
+                <img src="/favicon.svg" alt="logo" width={40} height={40} />
               </div>
               
               <div className="welcome-info">
@@ -161,10 +162,6 @@ const AuthPage = () => {
                 <div className="info-row">
                   <span className="label">Email</span>
                   <span className="value">{newUserData.email}</span>
-                </div>
-                <div className="info-row">
-                  <span className="label">Account ID</span>
-                  <span className="value">{newUserData.id}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Member Since</span>

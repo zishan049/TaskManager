@@ -1,3 +1,129 @@
+/* ─── Global Reset & Base ────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+input, button, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+
+#root {
+  isolation: isolate;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ─── Shared / Global Tokens ─────────────────────────────── */
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Focus Ring */
+:focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(var(--primary-accent-rgb), 0.2);
+  color: var(--text-primary);
+}
+
+/* Animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.page-enter {
+  animation: pageEnter 0.4s var(--transition-smooth) both;
+}
+
 /* ─── Layout & Navigation ────────────────────────────────── */
 .main-layout {
   display: flex;
@@ -1728,8 +1854,7 @@
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(12px);
+  background: transparent;
   z-index: var(--z-modal);
   opacity: 0;
   pointer-events: none;
@@ -1793,9 +1918,33 @@
   display: grid;
   grid-template-columns: 280px 1fr;
   height: calc(100vh - var(--navbar-height) - 40px);
-  gap: 20px;
+  gap: 10px;
   max-width: 1600px;
-  margin: 0 auto;
+  margin: 0;
+  margin-right: auto;
+  transition: grid-template-columns 0.3s var(--transition-smooth);
+}
+
+.team-container.show-tasks {
+  grid-template-columns: 280px 1fr 400px;
+}
+
+@media (min-width: 1025px) {
+  .team-container.show-tasks .team-tasks-sidebar {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    height: 100% !important;
+    width: 100% !important;
+    transform: none !important;
+    margin: 0 !important;
+    border-radius: var(--radius-2xl) !important;
+  }
+  
+  .team-container.show-tasks .sidebar-overlay {
+    display: none !important;
+  }
 }
 
 @media (max-width: 768px) {
