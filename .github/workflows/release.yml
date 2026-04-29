@@ -23,29 +23,20 @@ jobs:
         run: npm install
         working-directory: pc/taskmanager-pc
 
-      # Debug: Check if secrets are populated (lengths only)
-      - name: Verify Secrets
+      # Prepare signing key file (more robust than env vars for keys with newlines)
+      - name: Prepare Signing Key
         shell: bash
         run: |
-          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then echo "::error:: TAURI_SIGNING_PRIVATE_KEY is EMPTY"; else echo "TAURI_SIGNING_PRIVATE_KEY is set (length: ${#SECRET})"; fi
-          if [ -z "${{ secrets.RELEASES_TOKEN }}" ]; then echo "::error:: RELEASES_TOKEN is EMPTY"; else echo "RELEASES_TOKEN is set"; fi
-        env:
-          SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > tauri-key.key
+          echo "TAURI_SIGNING_PRIVATE_KEY_PATH=$PWD/tauri-key.key" >> $GITHUB_ENV
 
-      # Build Tauri app with signing
+      # Build Tauri app
       - name: Build Tauri App
         run: npx tauri build
         working-directory: pc/taskmanager-pc
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      # Debug: List all generated files
-      - name: List bundle files
-        shell: bash
-        run: |
-          echo "Listing all files in bundle directories:"
-          find pc/taskmanager-pc/src-tauri/target/release/bundle -maxdepth 3 -type f || echo "No bundle files found"
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
       # Read version from tauri.conf.json
       - name: Get version
@@ -53,31 +44,29 @@ jobs:
         shell: bash
         run: echo "version=$(jq -r '.version' pc/taskmanager-pc/src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
 
+      # CRITICAL: Verify that signature files actually exist
+      - name: Verify Signatures
+        shell: bash
+        run: |
+          SIG_FILES=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*.sig")
+          if [ -z "$SIG_FILES" ]; then
+            echo "::error:: NO SIGNATURE FILES GENERATED! The build will not work for updates."
+            exit 1
+          else
+            echo "Signatures found: $SIG_FILES"
+          fi
+
       # Robustly find the NSIS installer and its signature
       - name: Locate assets
         id: assets
         shell: bash
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Find the NSIS .exe
           EXE_PATH=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*setup.exe" | head -n 1)
-          
-          if [ -z "$EXE_PATH" ]; then
-            echo "::error:: No installer found!"
-            exit 1
-          fi
-
           SIG_PATH="${EXE_PATH}.sig"
           
           echo "exe_path=$EXE_PATH" >> $GITHUB_OUTPUT
           echo "exe_name=$(basename "$EXE_PATH")" >> $GITHUB_OUTPUT
-          
-          if [ -f "$SIG_PATH" ]; then
-            echo "sig_content=$(cat "$SIG_PATH")" >> $GITHUB_OUTPUT
-            echo "has_sig=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_sig=false" >> $GITHUB_OUTPUT
-          fi
+          echo "sig_content=$(cat "$SIG_PATH")" >> $GITHUB_OUTPUT
 
       # Create the latest.json manually
       - name: Generate latest.json
@@ -87,10 +76,6 @@ jobs:
           SIG_CONTENT="${{ steps.assets.outputs.sig_content }}"
           EXE_NAME="${{ steps.assets.outputs.exe_name }}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          if [ "${{ steps.assets.outputs.has_sig }}" == "false" ]; then
-            echo "::warning:: No signature file found! Updater will fail without it."
-          fi
 
           cat > latest.json << EOF
           {
@@ -121,6 +106,4 @@ jobs:
           files: |
             pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/*.exe
             pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/*.exe.sig
-            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi
-            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi.sig
             latest.json
