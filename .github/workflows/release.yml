@@ -24,15 +24,86 @@ jobs:
       - name: install frontend dependencies
         run: npm install
         working-directory: pc/taskmanager-pc
-      - uses: tauri-apps/tauri-action@v0
+
+      # Build Tauri app with signing
+      - name: Build Tauri App
+        run: npx tauri build
+        working-directory: pc/taskmanager-pc
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      # Read version from tauri.conf.json
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=$(jq -r '.version' pc/taskmanager-pc/src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
+
+      # Read the .sig file content for the NSIS installer
+      - name: Read NSIS signature
+        id: nsis_sig
+        shell: bash
+        run: |
+          SIG_FILE="pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe.sig"
+          if [ -f "$SIG_FILE" ]; then
+            echo "sig=$(cat "$SIG_FILE")" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Read the .sig file content for the MSI installer
+      - name: Read MSI signature
+        id: msi_sig
+        shell: bash
+        run: |
+          SIG_FILE="pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi.sig"
+          if [ -f "$SIG_FILE" ]; then
+            echo "sig=$(cat "$SIG_FILE")" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Create the latest.json manually
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          NSIS_SIG="${{ steps.nsis_sig.outputs.sig }}"
+          MSI_SIG="${{ steps.msi_sig.outputs.sig }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "TaskManager v${VERSION} release",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${NSIS_SIG}",
+                "url": "https://github.com/zishan049/taskmanager-releases/releases/download/v${VERSION}/TaskManager_${VERSION}_x64-setup.exe"
+              }
+            }
+          }
+          EOF
+          cat latest.json
+
+      # Create release on the PUBLIC repo with all assets
+      - name: Create Release on Public Repo
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: v__VERSION__ # the action automatically replaces __VERSION__ with the app version
-          releaseName: "TaskManager v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          projectPath: pc/taskmanager-pc
-          includeUpdaterJson: true
-          releaseDraft: false
+          repository: zishan049/taskmanager-releases
+          tag_name: v${{ steps.version.outputs.version }}
+          name: TaskManager v${{ steps.version.outputs.version }}
+          body: "See the assets to download this version and install."
+          draft: false
+          prerelease: false
+          files: |
+            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe
+            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe.sig
+            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi
+            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi.sig
+            latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
