@@ -33,36 +33,37 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      # Debug: List all generated files to see what we actually have
+      - name: List bundle files
+        shell: bash
+        run: |
+          echo "Listing all files in bundle directories:"
+          find pc/taskmanager-pc/src-tauri/target/release/bundle -maxdepth 3 -type f
+
       # Read version from tauri.conf.json
       - name: Get version
         id: version
         shell: bash
         run: echo "version=$(jq -r '.version' pc/taskmanager-pc/src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
 
-      # Read the .sig file content for the NSIS installer
-      - name: Read NSIS signature
-        id: nsis_sig
+      # Robustly find the NSIS installer and its signature
+      - name: Locate assets
+        id: assets
         shell: bash
         run: |
-          SIG_FILE="pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe.sig"
-          if [ -f "$SIG_FILE" ]; then
-            echo "sig=$(cat "$SIG_FILE")" >> $GITHUB_OUTPUT
-            echo "found=true" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.version.outputs.version }}"
+          # Find the NSIS .exe
+          EXE_PATH=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*setup.exe" | head -n 1)
+          SIG_PATH="${EXE_PATH}.sig"
+          
+          echo "exe_path=$EXE_PATH" >> $GITHUB_OUTPUT
+          echo "exe_name=$(basename $EXE_PATH)" >> $GITHUB_OUTPUT
+          
+          if [ -f "$SIG_PATH" ]; then
+            echo "sig_content=$(cat "$SIG_PATH")" >> $GITHUB_OUTPUT
+            echo "has_sig=true" >> $GITHUB_OUTPUT
           else
-            echo "found=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Read the .sig file content for the MSI installer
-      - name: Read MSI signature
-        id: msi_sig
-        shell: bash
-        run: |
-          SIG_FILE="pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi.sig"
-          if [ -f "$SIG_FILE" ]; then
-            echo "sig=$(cat "$SIG_FILE")" >> $GITHUB_OUTPUT
-            echo "found=true" >> $GITHUB_OUTPUT
-          else
-            echo "found=false" >> $GITHUB_OUTPUT
+            echo "has_sig=false" >> $GITHUB_OUTPUT
           fi
 
       # Create the latest.json manually
@@ -70,9 +71,13 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          NSIS_SIG="${{ steps.nsis_sig.outputs.sig }}"
-          MSI_SIG="${{ steps.msi_sig.outputs.sig }}"
+          SIG_CONTENT="${{ steps.assets.outputs.sig_content }}"
+          EXE_NAME="${{ steps.assets.outputs.exe_name }}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          if [ "${{ steps.assets.outputs.has_sig }}" == "false" ]; then
+            echo "::warning:: No signature file found! Updater will fail without it."
+          fi
 
           cat > latest.json << EOF
           {
@@ -81,8 +86,8 @@ jobs:
             "pub_date": "${PUB_DATE}",
             "platforms": {
               "windows-x86_64": {
-                "signature": "${NSIS_SIG}",
-                "url": "https://github.com/zishan049/taskmanager-releases/releases/download/v${VERSION}/TaskManager_${VERSION}_x64-setup.exe"
+                "signature": "${SIG_CONTENT}",
+                "url": "https://github.com/zishan049/taskmanager-releases/releases/download/v${VERSION}/${EXE_NAME}"
               }
             }
           }
@@ -90,20 +95,21 @@ jobs:
           cat latest.json
 
       # Create release on the PUBLIC repo with all assets
+      # Note: We use wildcards to make sure we catch all relevant files
       - name: Create Release on Public Repo
         uses: softprops/action-gh-release@v2
         with:
           repository: zishan049/taskmanager-releases
           tag_name: v${{ steps.version.outputs.version }}
           name: TaskManager v${{ steps.version.outputs.version }}
-          body: "See the assets to download this version and install."
+          body: "Release v${{ steps.version.outputs.version }} of TaskManager."
           draft: false
           prerelease: false
           files: |
-            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe
-            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/TaskManager_${{ steps.version.outputs.version }}_x64-setup.exe.sig
-            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi
-            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/TaskManager_${{ steps.version.outputs.version }}_x64_en-US.msi.sig
+            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/*.exe
+            pc/taskmanager-pc/src-tauri/target/release/bundle/nsis/*.exe.sig
+            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi
+            pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi.sig
             latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
