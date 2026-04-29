@@ -141,6 +141,18 @@ export const TeamsProvider = ({ children }) => {
         },
         (payload) => {
           const newMessageData = payload.new;
+          
+          // Check for Ping Sound
+          if (
+            newMessageData.metadata?.type === 'ping' && 
+            newMessageData.metadata?.pinged_user_id === user?.id &&
+            newMessageData.user_id !== user?.id
+          ) {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.error('Audio play failed:', e));
+          }
+
           setTeams(prevTeams => {
             return prevTeams.map(team => {
               if (team.id !== newMessageData.team_id) return team;
