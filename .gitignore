@@ -26,3 +26,7 @@ dist-ssr
 Call_init_idea
 .agent
 idea
+
+# Security
+**/src-tauri/main.key
+**/src-tauri/main.key.pub

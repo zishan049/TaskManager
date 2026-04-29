@@ -1,0 +1,71 @@
+.titlebar {
+  height: 32px;
+  background: var(--surface-color);
+  backdrop-filter: blur(20px);
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--border-color);
+  z-index: 9999;
+  font-family: var(--font-sans);
+}
+
+.titlebar-label {
+  padding-left: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titlebar-logo {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  filter: brightness(var(--logo-brightness, 1));
+}
+
+.tech-accent {
+  color: var(--primary-accent, #3b82f6);
+  margin-right: 8px;
+  font-size: 8px;
+  vertical-align: middle;
+}
+
+.titlebar-actions {
+  display: flex;
+  height: 100%;
+}
+
+.titlebar-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+  height: 100%;
+  color: var(--text-primary);
+  opacity: 0.6;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.titlebar-button:hover {
+  background: var(--surface-hover);
+  opacity: 1;
+}
+
+.titlebar-button.close:hover {
+  background: #e81123;
+  color: #fff;
+  opacity: 1;
+}

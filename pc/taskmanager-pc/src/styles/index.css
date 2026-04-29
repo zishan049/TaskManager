@@ -1,0 +1,5 @@
+/* ─── Minimal Techy CSS Architecture ─────────────────────── */
+@import './variables.css';
+@import './components.css';
+@import './calendar.css';
+@import './watermark.css';

@@ -1,0 +1,29 @@
+/* Giant Glowing Theme Watermark */
+.theme-watermark {
+  position: fixed;
+  top: 50%;
+  right: -5vw;
+  transform: translateY(-50%);
+  width: 90vh;
+  max-width: 900px;
+  rotate: 10deg;
+  aspect-ratio: 1;
+  background-color: var(--primary-accent);
+  mask: url('/favicon.svg') no-repeat center / contain;
+  -webkit-mask: url('/favicon.svg') no-repeat center / contain;
+  opacity: 0.15;
+  filter: drop-shadow(0 0 40px var(--primary-accent)) 
+          drop-shadow(0 0 80px rgba(var(--primary-accent-rgb), 0.6));
+  z-index: -1;
+  pointer-events: none;
+  transition: background-color 0.5s ease, filter 0.5s ease, opacity 0.5s ease;
+}
+
+/* On smaller screens, push it further back or hide */
+@media (max-width: 768px) {
+  .theme-watermark {
+    width: 100vw;
+    right: -25vw;
+    opacity: 0.04;
+  }
+}
