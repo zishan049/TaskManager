@@ -23,12 +23,15 @@ jobs:
         run: npm install
         working-directory: pc/taskmanager-pc
 
-      # Prepare signing key file (more robust than env vars for keys with newlines)
+      # Prepare signing key file using a more robust method
       - name: Prepare Signing Key
-        shell: bash
+        shell: pwsh
         run: |
-          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > tauri-key.key
-          echo "TAURI_SIGNING_PRIVATE_KEY_PATH=$PWD/tauri-key.key" >> $GITHUB_ENV
+          $key = @"
+          ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          "@
+          $key | Out-File -FilePath "tauri-signing.key" -Encoding ascii
+          echo "TAURI_SIGNING_PRIVATE_KEY_PATH=$PWD/tauri-signing.key" >> $env:GITHUB_ENV
 
       # Build Tauri app
       - name: Build Tauri App
@@ -44,17 +47,30 @@ jobs:
         shell: bash
         run: echo "version=$(jq -r '.version' pc/taskmanager-pc/src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
 
-      # CRITICAL: Verify that signature files actually exist
+      # CRITICAL: Verify and DEBUG if no signatures
       - name: Verify Signatures
         shell: bash
         run: |
+          echo "Searching for signatures in: pc/taskmanager-pc/src-tauri/target/release/bundle"
+          find pc/taskmanager-pc/src-tauri/target/release/bundle -maxdepth 3
+          
           SIG_FILES=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*.sig")
           if [ -z "$SIG_FILES" ]; then
-            echo "::error:: NO SIGNATURE FILES GENERATED! The build will not work for updates."
-            exit 1
-          else
-            echo "Signatures found: $SIG_FILES"
+            echo "::error:: NO SIGNATURE FILES GENERATED!"
+            echo "Attempting MANUAL signing..."
+            EXE_PATH=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*setup.exe" | head -n 1)
+            if [ -n "$EXE_PATH" ]; then
+               npx tauri signer sign -p "$PWD/tauri-signing.key" "$EXE_PATH"
+            fi
+            
+            # Check again
+            SIG_FILES=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*.sig")
+            if [ -z "$SIG_FILES" ]; then
+              echo "::error:: Manual signing also failed."
+              exit 1
+            fi
           fi
+          echo "Signatures successfully verified."
 
       # Robustly find the NSIS installer and its signature
       - name: Locate assets
