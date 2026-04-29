@@ -6,8 +6,6 @@ on:
 
 jobs:
   release:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +23,15 @@ jobs:
         run: npm install
         working-directory: pc/taskmanager-pc
 
+      # Debug: Check if secrets are populated (lengths only)
+      - name: Verify Secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then echo "::error:: TAURI_SIGNING_PRIVATE_KEY is EMPTY"; else echo "TAURI_SIGNING_PRIVATE_KEY is set (length: ${#SECRET})"; fi
+          if [ -z "${{ secrets.RELEASES_TOKEN }}" ]; then echo "::error:: RELEASES_TOKEN is EMPTY"; else echo "RELEASES_TOKEN is set"; fi
+        env:
+          SECRET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
       # Build Tauri app with signing
       - name: Build Tauri App
         run: npx tauri build
@@ -33,12 +40,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      # Debug: List all generated files to see what we actually have
+      # Debug: List all generated files
       - name: List bundle files
         shell: bash
         run: |
           echo "Listing all files in bundle directories:"
-          find pc/taskmanager-pc/src-tauri/target/release/bundle -maxdepth 3 -type f
+          find pc/taskmanager-pc/src-tauri/target/release/bundle -maxdepth 3 -type f || echo "No bundle files found"
 
       # Read version from tauri.conf.json
       - name: Get version
@@ -54,10 +61,16 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           # Find the NSIS .exe
           EXE_PATH=$(find pc/taskmanager-pc/src-tauri/target/release/bundle/nsis -name "*setup.exe" | head -n 1)
+          
+          if [ -z "$EXE_PATH" ]; then
+            echo "::error:: No installer found!"
+            exit 1
+          fi
+
           SIG_PATH="${EXE_PATH}.sig"
           
           echo "exe_path=$EXE_PATH" >> $GITHUB_OUTPUT
-          echo "exe_name=$(basename $EXE_PATH)" >> $GITHUB_OUTPUT
+          echo "exe_name=$(basename "$EXE_PATH")" >> $GITHUB_OUTPUT
           
           if [ -f "$SIG_PATH" ]; then
             echo "sig_content=$(cat "$SIG_PATH")" >> $GITHUB_OUTPUT
@@ -94,11 +107,11 @@ jobs:
           EOF
           cat latest.json
 
-      # Create release on the PUBLIC repo with all assets
-      # Note: We use wildcards to make sure we catch all relevant files
+      # Create release on the PUBLIC repo
       - name: Create Release on Public Repo
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASES_TOKEN }}
           repository: zishan049/taskmanager-releases
           tag_name: v${{ steps.version.outputs.version }}
           name: TaskManager v${{ steps.version.outputs.version }}
@@ -111,5 +124,3 @@ jobs:
             pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi
             pc/taskmanager-pc/src-tauri/target/release/bundle/msi/*.msi.sig
             latest.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
