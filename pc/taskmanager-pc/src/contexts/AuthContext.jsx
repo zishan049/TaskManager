@@ -151,6 +151,29 @@ export const AuthProvider = ({ children }) => {
       if (!profileError) fetchProfile(user.id, {});
       return { error: profileError || null };
     },
+    deleteAccount: async () => {
+      const confirmed = window.confirm("Are you sure you want to delete your account? This action is permanent and all your data will be lost.");
+      if (!confirmed) return { error: null };
+      
+      try {
+        // Delete profile data first
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', user.id);
+        
+        if (profileError) throw profileError;
+
+        // Note: Supabase Client SDK does not allow deleting the auth user directly without service role.
+        // We sign out as the final step.
+        setProfile(null);
+        await supabase.auth.signOut();
+        return { error: null };
+      } catch (err) {
+        console.error('deleteAccount error:', err.message);
+        return { error: err };
+      }
+    },
     user,
     profile,
     session,

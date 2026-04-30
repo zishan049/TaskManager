@@ -1,23 +1,72 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2, Cpu, Circle, Zap, Flame, Crown, Droplets } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username }) => {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const menuRef = useRef(null);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, setTheme } = useTheme();
+  const { updateProfile } = useAuth();
+
+  const themes = [
+    { id: 'light', icon: Sun, color: '#3b82f6' },
+    { id: 'dark', icon: Moon, color: '#60a5fa' },
+    { id: 'cyberpunk', icon: Cpu, color: '#00f3ff' },
+    { id: 'aura', icon: Palette, color: '#7aa2f7' },
+    { id: 'midnight', icon: Circle, color: '#a855f7' },
+    { id: 'emerald', icon: Zap, color: '#10b981' },
+    { id: 'crimson', icon: Flame, color: '#f43f5e' },
+    { id: 'gold', icon: Crown, color: '#fbbf24' },
+    { id: 'sapphire', icon: Droplets, color: '#3b82f6' }
+  ];
+
+  const handleThemeChange = async (themeId) => {
+    setTheme(themeId);
+    const themeObj = themes.find(t => t.id === themeId);
+    try {
+      await updateProfile({ 
+        theme_preference: themeId, 
+        theme_color: themeObj?.color || '#3b82f6' 
+      });
+    } catch (err) {
+      console.error("Theme save failed:", err);
+    }
+  };
+
+  const [isPositioned, setIsPositioned] = useState(false);
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
-    
-    // Calculate position to keep menu within viewport
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    setPosition({ x, y });
+    setIsPositioned(false);
     setVisible(true);
+    setPosition({ x: e.clientX, y: e.clientY });
   }, []);
+
+  useLayoutEffect(() => {
+    if (visible && menuRef.current) {
+      const menuRect = menuRef.current.getBoundingClientRect();
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      
+      let newX = position.x;
+      let newY = position.y;
+      
+      if (position.x + menuRect.width > screenWidth) {
+        newX = screenWidth - menuRect.width - 10;
+      }
+      if (position.y + menuRect.height > screenHeight) {
+        newY = screenHeight - menuRect.height - 10;
+      }
+
+      newX = Math.max(10, newX);
+      newY = Math.max(10, newY);
+      
+      setPosition({ x: newX, y: newY });
+      setIsPositioned(true);
+    }
+  }, [visible, position.x, position.y]);
 
   const handleClick = useCallback(() => {
     if (visible) setVisible(false);
@@ -46,7 +95,7 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
       style={{ 
         top: position.y, 
         left: position.x,
-        transform: `translate(${position.x + 220 > window.innerWidth ? '-100%' : '0'}, ${position.y + 350 > window.innerHeight ? '-100%' : '0'})`
+        opacity: isPositioned ? 1 : 0
       }}
     >
       <div className="context-header">
@@ -93,10 +142,32 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
           <Settings size={18} />
           <span>Settings</span>
         </div>
-        <div className="context-item" onClick={() => handleItemClick(toggleTheme)}>
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          <span>Toggle Theme</span>
-        </div>
+        
+        {(theme === 'light' || theme === 'dark') ? (
+          <div className="context-item" onClick={() => handleItemClick(toggleTheme)}>
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            <span>Toggle Theme</span>
+          </div>
+        ) : (
+          <div className="context-theme-selector">
+            <div className="context-item header-item">
+              <Palette size={18} />
+              <span>Change Theme</span>
+            </div>
+            <div className="context-theme-grid">
+              {themes.map(t => (
+                <div 
+                  key={t.id} 
+                  className={`theme-dot ${theme === t.id ? 'active' : ''}`}
+                  onClick={() => handleItemClick(() => handleThemeChange(t.id))}
+                  title={t.id.charAt(0).toUpperCase() + t.id.slice(1)}
+                >
+                  <t.icon size={14} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="context-divider" />

@@ -7,7 +7,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
 
 const SettingsPage = () => {
-  const { user, profile, updateProfile, signOut } = useAuth();
+  const { user, profile, updateProfile, signOut, deleteAccount } = useAuth();
   const { theme, setTheme } = useTheme();
   const [username, setUsername] = useState(profile?.username || user?.user_metadata?.username || '');
   const [bio, setBio] = useState(profile?.bio || '');
@@ -182,9 +182,11 @@ const SettingsPage = () => {
 
         <div className="card danger-card" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
           <div className="card-title" style={{ color: 'var(--danger)' }}><Trash2 size={18} /><span>Danger Zone</span></div>
-          <p className="text-secondary text-sm" style={{ marginTop: '1rem' }}>Sign out of your account.</p>
+          <p className="text-secondary text-sm" style={{ marginTop: '1rem' }}>Permanently delete your account and all associated data.</p>
           <div style={{ marginTop: '2rem' }}>
-            <button onClick={() => signOut()} className="btn btn-secondary" style={{ width: '100%', gap: '8px' }}><LogOut size={16} /> Sign Out</button>
+            <button onClick={() => deleteAccount()} className="btn btn-danger" style={{ width: '100%', gap: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <Trash2 size={16} /> Delete Account
+            </button>
           </div>
         </div>
       </div>

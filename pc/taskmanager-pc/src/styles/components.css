@@ -3648,6 +3648,56 @@ a {
   background: rgba(var(--danger-rgb), 0.1);
 }
 
+.context-theme-selector {
+  padding: 4px 2px;
+}
+
+.context-theme-selector .header-item {
+  pointer-events: none;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+.context-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.theme-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-dot:hover {
+  background: var(--surface-hover);
+  color: var(--primary-accent);
+  transform: translateY(-2px);
+  border-color: var(--primary-accent);
+}
+
+.theme-dot.active {
+  background: var(--primary-accent);
+  color: white;
+  border-color: var(--primary-accent);
+  box-shadow: 0 4px 12px rgba(var(--primary-accent-rgb), 0.3);
+}
+
 .context-item span {
   flex: 1;
 }
