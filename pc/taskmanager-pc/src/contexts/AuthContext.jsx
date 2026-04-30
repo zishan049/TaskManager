@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile: async (attributes) => {
       const authFields = {};
       if (attributes.username) authFields.username = attributes.username;
-      if (attributes.full_name) authFields.full_name = attributes.full_name;
+      if (attributes.full_name !== undefined) authFields.full_name = attributes.full_name;
       if (attributes.avatar_url) authFields.avatar_url = attributes.avatar_url;
 
       if (Object.keys(authFields).length > 0) {
@@ -152,20 +152,13 @@ export const AuthProvider = ({ children }) => {
       return { error: profileError || null };
     },
     deleteAccount: async () => {
-      const confirmed = window.confirm("Are you sure you want to delete your account? This action is permanent and all your data will be lost.");
-      if (!confirmed) return { error: null };
-      
       try {
-        // Delete profile data first
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', user.id);
-        
-        if (profileError) throw profileError;
+        // Call the RPC function to delete the auth user
+        // This will trigger the database trigger to delete the profile and other data
+        const { error: rpcError } = await supabase.rpc('delete_own_account');
+        if (rpcError) throw rpcError;
 
-        // Note: Supabase Client SDK does not allow deleting the auth user directly without service role.
-        // We sign out as the final step.
+        // Sign out as the final step (clears local session)
         setProfile(null);
         await supabase.auth.signOut();
         return { error: null };

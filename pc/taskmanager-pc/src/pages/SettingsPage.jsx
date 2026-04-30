@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Cpu, Circle, Palette, Zap, Flame, Crown, Droplets } from 'lucide-react';
+import ConfirmModal from '../components/ui/ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../hooks/useTheme';
 import { check } from '@tauri-apps/plugin-updater';
@@ -10,6 +11,7 @@ const SettingsPage = () => {
   const { user, profile, updateProfile, signOut, deleteAccount } = useAuth();
   const { theme, setTheme } = useTheme();
   const [username, setUsername] = useState(profile?.username || user?.user_metadata?.username || '');
+  const [fullName, setFullName] = useState(profile?.full_name || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [email, setEmail] = useState(user?.email || '');
   const [newPassword, setNewPassword] = useState('');
@@ -20,6 +22,7 @@ const SettingsPage = () => {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [newVersion, setNewVersion] = useState(null);
   const [currentAppVersion, setCurrentAppVersion] = useState('0.1.0');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -28,11 +31,11 @@ const SettingsPage = () => {
     fetchVersion();
   }, []);
 
-  useEffect(() => { if (profile) { setUsername(profile.username || ''); setBio(profile.bio || ''); } }, [profile]);
+  useEffect(() => { if (profile) { setUsername(profile.username || ''); setFullName(profile.full_name || ''); setBio(profile.bio || ''); } }, [profile]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault(); setLoading(true);
-    try { const { error } = await updateProfile({ username, bio }); if (error) throw error; setMessage({ type: 'success', text: 'Profile updated!' }); }
+    try { const { error } = await updateProfile({ username, full_name: fullName, bio }); if (error) throw error; setMessage({ type: 'success', text: 'Profile updated!' }); }
     catch (err) { setMessage({ type: 'error', text: err.message }); } finally { setLoading(false); }
   };
 
@@ -88,6 +91,20 @@ const SettingsPage = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setIsDeleteModalOpen(false);
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    try {
+      const { error } = await deleteAccount();
+      if (error) throw error;
+      // Success is handled by signOut in AuthContext which will redirect/update UI
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="settings-page">
       <div className="page-header" style={{ marginBottom: '1rem' }}>
@@ -107,7 +124,8 @@ const SettingsPage = () => {
         <div className="card">
           <div className="card-title"><User size={18} /><span>Profile Information</span></div>
           <form onSubmit={handleUpdateProfile} className="auth-form" style={{ marginTop: '1.5rem' }}>
-            <div className="input-field"><label>Username</label><div className="input-wrapper"><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" /></div></div>
+            <div className="input-field"><label>Full Name</label><div className="input-wrapper"><input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Enter your full name" /></div></div>
+            <div className="input-field" style={{ marginTop: '1rem' }}><label>Username</label><div className="input-wrapper"><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" /></div></div>
             <div className="input-field" style={{ marginTop: '1rem' }}>
               <label>Bio (Operative Status)</label>
               <div className="input-wrapper"><textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about your mission..." rows={3} className="modern-input" style={{ width: '100%', padding: '0.75rem', borderRadius: '12px' }} /></div>
@@ -184,12 +202,22 @@ const SettingsPage = () => {
           <div className="card-title" style={{ color: 'var(--danger)' }}><Trash2 size={18} /><span>Danger Zone</span></div>
           <p className="text-secondary text-sm" style={{ marginTop: '1rem' }}>Permanently delete your account and all associated data.</p>
           <div style={{ marginTop: '2rem' }}>
-            <button onClick={() => deleteAccount()} className="btn btn-danger" style={{ width: '100%', gap: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <button onClick={() => setIsDeleteModalOpen(true)} className="btn btn-danger" style={{ width: '100%', gap: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
               <Trash2 size={16} /> Delete Account
             </button>
           </div>
         </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        title="Delete Account?"
+        message="Are you sure you want to delete your account? This action is permanent and all your data will be lost. This cannot be undone."
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        confirmText="Delete Account"
+        type="danger"
+      />
     </div>
   );
 };
