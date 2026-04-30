@@ -12,7 +12,7 @@ jobs:
         platform: [windows-latest]
     runs-on: ${{ matrix.platform }}
     defaults:
-      run:
+      run:z
         working-directory: pc/taskmanager-pc
     steps:
       - uses: actions/checkout@v4
