@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Signing Keys
+new_key.txt
+new_key.txt.pub
+tauri-signing.key
