@@ -49,17 +49,19 @@ const AuthPage = () => {
       <div className="theme-watermark" aria-hidden="true" />
       <div className="auth-card page-enter">
         <div className="auth-header">
-          <div className="logo" style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-            <img src="/favicon.svg" alt="TaskManager" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-            <span style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>TaskManager</span>
+          <div className="logo" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <img src="/favicon.svg" alt="TaskManager" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
           </div>
-          <h1 className="auth-title">
+
+          <h1 className="auth-title" style={{ marginTop: '0.5rem' }}>
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </h1>
+
           <p className="auth-subtitle">
             {isSignUp 
               ? 'Join our community and stay productive.' 
-              : 'Sign in to continue managing your tasks.'}
+              : 'Sign in to Get Some Shit Done!!'}
+
           </p>
         </div>
 

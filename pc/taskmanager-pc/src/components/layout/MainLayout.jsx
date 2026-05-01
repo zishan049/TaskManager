@@ -29,10 +29,14 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout 
       <header className="header">
         <div className="header-container">
           <div className="header-left">
-            <div className="logo" onClick={() => onViewChange('home')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/favicon.svg" alt="TaskManager" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-              <span style={{ fontWeight: 'bold' }}>TaskManager</span>
+            <div className="logo-group" onClick={() => onViewChange('home')}>
+              <div className="logo">
+                <img src="/favicon.svg" alt="TaskManager" className="theme-aware-logo" />
+                <span className="logo-text">TaskManager</span>
+              </div>
+              <span className="logo-tagline">Let's Get Shit Done!!</span>
             </div>
+
             <nav className="nav-links">
               {navItems.map(item => (
                 <div key={item.id} className={`nav-link ${currentView === item.id ? 'active' : ''}`} onClick={() => onViewChange(item.id)}>

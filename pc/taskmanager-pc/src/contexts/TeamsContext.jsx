@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { useNotifications } from './NotificationContext';
+import { useNavigation } from './NavigationContext';
 
 const TeamsContext = createContext({});
 
@@ -11,8 +13,24 @@ export const TeamsProvider = ({ children }) => {
   const [presence, setPresence] = useState({}); // { userId: true }
   const [teamNotes, setTeamNotes] = useState({}); // { teamId: [notes] }
   const { user, profile: currentUserProfile } = useAuth();
+  const { addNotification } = useNotifications();
+  const { currentView, setCurrentView } = useNavigation();
+
+  const viewRef = useRef(currentView);
+  const teamsRef = useRef(teams);
+
+  // Keep refs in sync without re-subscribing listeners
+  useEffect(() => {
+    viewRef.current = currentView;
+  }, [currentView]);
+
+  useEffect(() => {
+    teamsRef.current = teams;
+  }, [teams]);
+
 
   const fetchTeams = useCallback(async () => {
+
     if (!user?.id) {
       setLoading(false);
       return;
@@ -142,22 +160,56 @@ export const TeamsProvider = ({ children }) => {
         (payload) => {
           const newMessageData = payload.new;
           
-          // Check for Ping Sound
-          if (
-            newMessageData.metadata?.type === 'ping' && 
-            newMessageData.metadata?.pinged_user_id === user?.id &&
-            newMessageData.user_id !== user?.id
-          ) {
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => console.error('Audio play failed:', e));
+          // Find the team and sender using teamsRef to avoid stale closure
+          const targetTeam = teamsRef.current.find(t => t.id === newMessageData.team_id);
+          if (!targetTeam) return;
+
+
+          const sender = targetTeam.members?.find(m => m.user_id === newMessageData.user_id);
+          const isFromMe = newMessageData.user_id === user?.id;
+
+          // Notifications logic (outside state setter)
+          if (!isFromMe) {
+            const isPing = newMessageData.metadata?.type === 'ping' && newMessageData.metadata?.pinged_user_id === user?.id;
+            
+            if (isPing) {
+              // ALWAYS play sound for pings (even if on team page)
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+              audio.volume = 0.5;
+              audio.play().catch(e => console.error('Audio play failed:', e));
+
+              // Show visual notification only if not on team page
+              if (viewRef.current !== 'team') {
+                addNotification({
+                  title: 'New Ping!',
+                  message: `${sender?.username || 'Someone'} pinged you in ${targetTeam.name}.`,
+                  type: 'ping',
+                  duration: 8000,
+                  onClick: () => setCurrentView('team')
+                });
+              }
+            } else if (viewRef.current !== 'team') {
+              // Regular message sound and visual notification only if NOT on team page
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3');
+              audio.volume = 0.5;
+              audio.play().catch(e => console.error('Audio play failed:', e));
+
+              addNotification({
+                title: `#${targetTeam.name}`,
+                message: `${sender?.username || 'Member'}: ${newMessageData.content}`,
+                type: 'chat',
+                duration: 5000,
+                onClick: () => setCurrentView('team')
+              });
+            }
           }
+
+
 
           setTeams(prevTeams => {
             return prevTeams.map(team => {
               if (team.id !== newMessageData.team_id) return team;
               
-              const sender = team.members?.find(m => m.user_id === newMessageData.user_id);
               const newMessage = {
                 ...newMessageData,
                 user_metadata: { 
@@ -166,7 +218,9 @@ export const TeamsProvider = ({ children }) => {
                 }
               };
 
+
               const existingMessages = team.messages || [];
+
               const isDuplicate = existingMessages.some(m => 
                 m.id === newMessageData.id || 
                 (m.user_id === newMessageData.user_id && m.content === newMessageData.content && m.id.length < 10)
@@ -252,7 +306,52 @@ export const TeamsProvider = ({ children }) => {
           })));
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'team_invites',
+          filter: `invitee_id=eq.${user.id}`
+        },
+        async (payload) => {
+          const newInvite = payload.new;
+          
+          // Fetch inviter profile for better notification
+          const { data: inviter } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', newInvite.inviter_id)
+            .single();
+
+          if (viewRef.current !== 'team') {
+            // Invite Sound (Clean Chime)
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2353/2353-preview.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.error('Audio play failed:', e));
+
+
+
+
+
+
+
+            addNotification({
+
+              title: 'Team Invitation',
+              message: `${inviter?.username || 'Someone'} invited you to join a team.`,
+              type: 'invite',
+              duration: 10000,
+              onClick: () => setCurrentView('team')
+            });
+
+          }
+          
+          fetchInvites();
+        }
+      )
       .subscribe();
+
 
     // Listen for any member changes (joins/kicks) in all my teams
     const membersListener = supabase
@@ -310,9 +409,26 @@ export const TeamsProvider = ({ children }) => {
       )
       .subscribe();
 
+    const invitesListener = supabase
+      .channel('global_invite_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_invites',
+          filter: `invitee_id=eq.${user.id}`
+        },
+        () => {
+          fetchInvites();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(membersListener);
+      supabase.removeChannel(invitesListener);
     };
   }, [user, fetchTeams, fetchInvites]);
 
@@ -405,7 +521,46 @@ export const TeamsProvider = ({ children }) => {
     }
   };
 
+  const leaveTeam = async (teamId) => {
+    try {
+      const teamToLeave = teams.find(t => t.id === teamId);
+      
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Unassign any tasks in this team
+      await supabase
+        .from('tasks')
+        .update({ user_id: null })
+        .eq('team_id', teamId)
+        .eq('user_id', user.id);
+
+      // Add a system message to the team chat
+      await supabase.from('team_messages').insert([{
+        team_id: teamId,
+        user_id: user.id,
+        content: `@${currentUserProfile?.username || 'Someone'} has left the team.`,
+        metadata: { type: 'system' }
+      }]);
+
+      await logActivity('TEAM_LEFT', { name: teamToLeave?.name || teamId });
+
+
+      setTeams(prev => prev.filter(t => t.id !== teamId));
+      return { error: null };
+    } catch (err) {
+      console.error('Error leaving team:', err.message);
+      return { error: err };
+    }
+  };
+
   const uploadTeamFile = async (file) => {
+
     try {
       const MAX_SIZE = 500 * 1024;
       if (file.size > MAX_SIZE) {
@@ -551,6 +706,9 @@ export const TeamsProvider = ({ children }) => {
 
   const kickMember = async (teamId, userId) => {
     try {
+      const targetTeam = teams.find(t => t.id === teamId);
+      const targetMember = targetTeam?.members?.find(m => m.user_id === userId);
+
       const { error } = await supabase
         .from('team_members')
         .delete()
@@ -558,6 +716,21 @@ export const TeamsProvider = ({ children }) => {
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      // Unassign any tasks in this team for this user
+      await supabase
+        .from('tasks')
+        .update({ user_id: null })
+        .eq('team_id', teamId)
+        .eq('user_id', userId);
+
+      // Add a system message to the team chat
+      await supabase.from('team_messages').insert([{
+        team_id: teamId,
+        user_id: user.id, // The kicker is the one performing the action
+        content: `@${targetMember?.username || 'Member'} was removed from the team.`,
+        metadata: { type: 'system' }
+      }]);
 
       setTeams(prev => prev.map(t => 
         t.id === teamId ? { ...t, members: (t.members || []).filter(m => m.user_id !== userId) } : t
@@ -569,6 +742,7 @@ export const TeamsProvider = ({ children }) => {
       return { error: err };
     }
   };
+
 
   const acceptInvite = async (inviteId, teamId) => {
     try {
@@ -600,6 +774,34 @@ export const TeamsProvider = ({ children }) => {
 
   const clearTeamMessages = async (teamId) => {
     try {
+      // Find images to delete from Storage first
+      const { data: messages } = await supabase
+        .from('team_messages')
+        .select('metadata')
+        .eq('team_id', teamId)
+        .eq('user_id', user.id);
+      
+      const imageUrls = messages
+        ?.map(m => m.metadata?.image_url)
+        .filter(url => url && url.includes('chat-attachments')) || [];
+
+      if (imageUrls.length > 0) {
+        const filePaths = imageUrls.map(url => {
+          const bucketToken = 'chat-attachments/';
+          if (url.includes(bucketToken)) {
+            const path = url.split(bucketToken)[1].split('?')[0];
+            return path.startsWith('public/') ? path.replace('public/', '') : path;
+          }
+          return null;
+        }).filter(Boolean);
+
+        if (filePaths.length > 0) {
+          await supabase.storage
+            .from('chat-attachments')
+            .remove(filePaths);
+        }
+      }
+
       const { error } = await supabase
         .from('team_messages')
         .delete()
@@ -723,13 +925,16 @@ export const TeamsProvider = ({ children }) => {
     refreshInvites: fetchInvites,
     deleteDailyNote,
     addDailyNote,
-    fetchTeamNotes
+    fetchTeamNotes,
+    leaveTeam
+
   }), [
     teams, invites, loading, presence, teamNotes, 
     createTeam, deleteTeam, inviteToTeam, acceptInvite, 
     declineInvite, sendMessage, clearTeamMessages, 
     uploadTeamFile, kickMember, fetchTeams, fetchInvites, 
-    deleteDailyNote, addDailyNote, fetchTeamNotes
+    deleteDailyNote, addDailyNote, fetchTeamNotes, leaveTeam
+
   ]);
 
   return (

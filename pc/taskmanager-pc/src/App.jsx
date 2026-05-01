@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { check } from '@tauri-apps/plugin-updater';
 import { useAuth } from './contexts/AuthContext';
+
 import { useTasks } from './hooks/useTasks';
 import { ListTodo } from 'lucide-react';
 import TitleBar from './components/TitleBar';
@@ -14,6 +16,7 @@ import TaskSidebar from './components/tasks/TaskSidebar';
 import MiniCalendar from './components/ui/MiniCalendar';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ContextMenu from './components/ui/ContextMenu';
+import { useNavigation } from './contexts/NavigationContext';
 
 
 class ErrorBoundary extends React.Component {
@@ -34,25 +37,50 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+
+
+
 function AppContent() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const { tasks, loading: tasksLoading, updateTask, deleteTask } = useTasks();
-  const [currentView, setCurrentView] = useState(() => localStorage.getItem('taskmanager_view') || 'home');
+  const { currentView, setCurrentView } = useNavigation();
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
+
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      try {
+        const update = await check();
+        if (update) {
+          setHasUpdate(true);
+        } else {
+          setHasUpdate(false);
+        }
+      } catch (err) {
+        console.error('Update check failed:', err);
+      }
+    };
+
+    checkForUpdates();
+    // Check for updates every hour
+    const interval = setInterval(checkForUpdates, 3600000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
+
     setIsLoggingOut(true);
     // Wait for animation duration minus fade out
     setTimeout(async () => {
       await signOut();
       setIsLoggingOut(false);
-    }, 4000);
+    }, 2500);
+
   };
 
   const handleViewChange = (view) => {
     setCurrentView(view);
-    localStorage.setItem('taskmanager_view', view);
   };
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -75,18 +103,18 @@ function AppContent() {
 
   useEffect(() => {
     if (user) {
-      const stored = localStorage.getItem('taskmanager_view');
-      if (stored) setCurrentView(stored);
+      // Navigation is now handled by the context which reads from localStorage on init
     }
   }, [user]);
 
   if (showSplash) {
-    return <LoadingScreen onComplete={() => setShowSplash(false)} duration={6000} />;
+    return <LoadingScreen onComplete={() => setShowSplash(false)} duration={2000} />;
   }
 
   if (isLoggingOut) {
-    return <LoadingScreen onComplete={() => {}} duration={4000} title="See you soon!" status="Signing you out safely..." />;
+    return <LoadingScreen onComplete={() => {}} duration={2500} title="See you soon!" status="Signing you out safely..." />;
   }
+
 
   if (authLoading) {
     return (<><TitleBar /><div className="loading-screen" style={{ paddingTop: '32px' }}><div className="loader"></div></div></>);
@@ -178,7 +206,10 @@ function AppContent() {
       </MainLayout>
       <QuickAdd isOpen={isQuickAddOpen} onClose={() => setIsQuickAddOpen(false)} />
       <TaskSidebar task={tasks?.find(t => t.id === selectedTaskId)} isOpen={isSidebarOpen} onClose={() => { setIsSidebarOpen(false); setSelectedTaskId(null); }} />
-      <div className="beta-badge">Beta</div>
+      <div className={`beta-badge ${hasUpdate ? 'update-available' : ''}`} onClick={() => hasUpdate && setCurrentView('settings')}>
+        {hasUpdate ? 'Update' : 'Beta'}
+      </div>
+
     </>
   );
 }

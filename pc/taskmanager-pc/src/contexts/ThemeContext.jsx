@@ -5,7 +5,17 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem('theme');
+    const removedThemes = ['cyberpunk', 'midnight', 'crimson'];
+    if (removedThemes.includes(saved)) {
+      localStorage.setItem('theme', 'light');
+      return 'light';
+    }
+    if (saved === 'sapphire') {
+      localStorage.setItem('theme', 'dark');
+      return 'dark';
+    }
     return saved || 'light';
+
   });
 
   useEffect(() => {

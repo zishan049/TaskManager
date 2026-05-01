@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Cpu, Circle, Palette, Zap, Flame, Crown, Droplets } from 'lucide-react';
+import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Palette, Zap, Crown, Droplets } from 'lucide-react';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../hooks/useTheme';
@@ -141,14 +141,11 @@ const SettingsPage = () => {
             {[
               { id: 'light', label: 'Light', icon: Sun, color: '#3b82f6' },
               { id: 'dark', label: 'Dark', icon: Moon, color: '#60a5fa' },
-              { id: 'cyberpunk', label: 'Neon', icon: Cpu, color: '#00f3ff' },
               { id: 'aura', label: 'Aura', icon: Palette, color: '#7aa2f7' },
-              { id: 'midnight', label: 'OLED', icon: Circle, color: '#a855f7' },
               { id: 'emerald', label: 'Emerald', icon: Zap, color: '#10b981' },
-              { id: 'crimson', label: 'Crimson', icon: Flame, color: '#f43f5e' },
-              { id: 'gold', label: 'Gold', icon: Crown, color: '#fbbf24' },
-              { id: 'sapphire', label: 'Sapphire', icon: Droplets, color: '#3b82f6' }
+              { id: 'gold', label: 'Gold', icon: Crown, color: '#fbbf24' }
             ].map(t => (
+
               <button key={t.id} className={`theme-btn ${theme === t.id ? 'active' : ''}`} onClick={() => handleThemeChange(t)}
                 style={{ padding: '1rem 0.5rem', borderRadius: '12px', border: '1.5px solid var(--border-color)', background: theme === t.id ? 'var(--surface-2)' : 'transparent', borderColor: theme === t.id ? t.color : 'var(--border-color)', boxShadow: theme === t.id ? `0 8px 20px -8px ${t.color}` : 'none', transform: theme === t.id ? 'translateY(-2px)' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s var(--transition-smooth)' }}>
                 <t.icon size={20} color={theme === t.id ? t.color : 'var(--text-tertiary)'} />
@@ -195,18 +192,14 @@ const SettingsPage = () => {
               <RefreshCw size={16} className={updateStatus === 'checking' ? 'animate-spin' : ''} /> 
               {updateStatus === 'checking' ? 'Checking...' : 'Check for Updates'}
             </button>
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '1rem' }}>
+              <button onClick={() => setIsDeleteModalOpen(true)} className="btn btn-danger" style={{ width: '100%', gap: '8px', background: 'rgba(239,68,68,0.05)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.1)', fontSize: '0.8rem' }}>
+                <Trash2 size={14} /> Delete Account
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="card danger-card" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
-          <div className="card-title" style={{ color: 'var(--danger)' }}><Trash2 size={18} /><span>Danger Zone</span></div>
-          <p className="text-secondary text-sm" style={{ marginTop: '1rem' }}>Permanently delete your account and all associated data.</p>
-          <div style={{ marginTop: '2rem' }}>
-            <button onClick={() => setIsDeleteModalOpen(true)} className="btn btn-danger" style={{ width: '100%', gap: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <Trash2 size={16} /> Delete Account
-            </button>
-          </div>
-        </div>
       </div>
 
       <ConfirmModal 

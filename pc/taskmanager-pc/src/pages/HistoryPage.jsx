@@ -1,11 +1,18 @@
 import React from 'react';
 import { useHistory } from '../hooks/useHistory';
-import { Activity, Clock, List, Trash2 } from 'lucide-react';
+import { Activity, Clock, List, Trash2, LayoutGrid } from 'lucide-react';
 import ConfirmModal from '../components/ui/ConfirmModal';
 
 const HistoryPage = () => {
   const { history, loading, clearHistory } = useHistory();
   const [showClearConfirm, setShowClearConfirm] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState(() => localStorage.getItem('history_view_mode') || 'list');
+
+  const toggleViewMode = () => {
+    const newMode = viewMode === 'list' ? 'grid' : 'list';
+    setViewMode(newMode);
+    localStorage.setItem('history_view_mode', newMode);
+  };
 
   const handleClear = async () => {
     await clearHistory();
@@ -21,11 +28,23 @@ const HistoryPage = () => {
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Activity History</h2>
           <p className="text-secondary text-sm">A record of your recent actions and changes.</p>
         </div>
-        {history.length > 0 && (
-          <button className="btn btn-secondary danger-hover" onClick={() => setShowClearConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', padding: '8px 16px' }}>
-            <Trash2 size={16} /> Clear History
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            className="btn btn-secondary view-mode-toggle" 
+            onClick={toggleViewMode} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', padding: '8px 12px' }}
+            title={viewMode === 'list' ? 'Switch to Grid View' : 'Switch to List View'}
+          >
+
+            {viewMode === 'list' ? <LayoutGrid size={16} /> : <List size={16} />}
+            {viewMode === 'list' ? 'Grid View' : 'List View'}
           </button>
-        )}
+          {history.length > 0 && (
+            <button className="btn btn-secondary danger-hover" onClick={() => setShowClearConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', padding: '8px 16px' }}>
+              <Trash2 size={16} /> Clear History
+            </button>
+          )}
+        </div>
       </div>
       <div className="logs-container">
         {history.length === 0 ? (
@@ -33,16 +52,16 @@ const HistoryPage = () => {
             <List size={48} style={{ marginBottom: '1rem' }} /><p className="text-secondary">No activity recorded yet.</p>
           </div>
         ) : (
-          <div className="log-list">
+          <div className={`log-list ${viewMode}-mode`}>
             {history.map(entry => (
-              <div key={entry.id} className="log-item card" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', padding: '1.25rem' }}>
-                <div className="log-icon accent" style={{ background: 'var(--accent-muted)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div key={entry.id} className="log-item card">
+                <div className="log-icon accent">
                   <Activity size={18} />
                 </div>
-                <div className="log-content" style={{ flex: 1 }}>
-                  <div className="log-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{entry.action.charAt(0).toUpperCase() + entry.action.slice(1).replace(/_/g, ' ')}</span>
-                    <span className="text-tertiary text-xs" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div className="log-content">
+                  <div className="log-header">
+                    <span className="log-action">{entry.action.charAt(0).toUpperCase() + entry.action.slice(1).replace(/_/g, ' ')}</span>
+                    <span className="text-tertiary text-xs log-date">
                       <Clock size={12} /> {new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>

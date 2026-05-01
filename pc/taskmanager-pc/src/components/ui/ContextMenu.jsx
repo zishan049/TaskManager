@@ -12,15 +12,12 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
 
   const themes = [
     { id: 'light', icon: Sun, color: '#3b82f6' },
-    { id: 'dark', icon: Moon, color: '#60a5fa' },
-    { id: 'cyberpunk', icon: Cpu, color: '#00f3ff' },
+    { id: 'dark', icon: Moon, color: '#3b82f6' },
     { id: 'aura', icon: Palette, color: '#7aa2f7' },
-    { id: 'midnight', icon: Circle, color: '#a855f7' },
     { id: 'emerald', icon: Zap, color: '#10b981' },
-    { id: 'crimson', icon: Flame, color: '#f43f5e' },
-    { id: 'gold', icon: Crown, color: '#fbbf24' },
-    { id: 'sapphire', icon: Droplets, color: '#3b82f6' }
+    { id: 'gold', icon: Crown, color: '#fbbf24' }
   ];
+
 
   const handleThemeChange = async (themeId) => {
     setTheme(themeId);

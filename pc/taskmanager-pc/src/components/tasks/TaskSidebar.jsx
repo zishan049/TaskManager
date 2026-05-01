@@ -3,6 +3,7 @@ import { X, Calendar, Tag, AlignLeft, Flag, Clock, CheckCircle2, Circle, Users, 
 import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../contexts/AuthContext';
 import ConfirmModal from '../ui/ConfirmModal';
+import { useTeams } from '../../contexts/TeamsContext';
 
 const TaskSidebar = ({ task, isOpen, onClose }) => {
   const { updateTask, deleteTask, fetchTaskHistory, addPersonalNote, deletePersonalNote } = useTasks();
@@ -12,7 +13,9 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
   const [editPriority, setEditPriority] = useState('medium');
   const [editDueDate, setEditDueDate] = useState('');
   const [editTags, setEditTags] = useState('');
+  const [editNotes, setEditNotes] = useState('');
   const [historyEntries, setHistoryEntries] = useState([]);
+  const { teamNotes, fetchTeamNotes } = useTeams();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const bottomRef = useRef(null);
 
@@ -23,7 +26,9 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
       setEditPriority(task.priority || 'medium');
       setEditDueDate(task.due_date || '');
       setEditTags(task.tags?.join(', ') || '');
+      setEditNotes(task.notes || '');
       loadHistory(task.id);
+      if (task.team_id) fetchTeamNotes(task.team_id);
     }
   }, [task]);
 
@@ -60,7 +65,23 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
 
   if (!task) return null;
 
-  const history = historyEntries.filter(e => e.action !== 'NOTE');
+  const combinedHistory = [
+    ...historyEntries.filter(e => e.action !== 'NOTE').map(e => ({
+      id: e.id,
+      action: e.action.replace('_', ' '),
+      created_at: e.created_at,
+      type: 'history'
+    })),
+    ...(teamNotes[task.team_id] || [])
+      .filter(n => n.task_id === task.id)
+      .map(n => ({
+        id: n.id,
+        action: `NOTE by @${n.user?.username || 'user'}`,
+        content: n.content,
+        created_at: n.created_at,
+        type: 'team_note'
+      }))
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
     <>
@@ -129,8 +150,9 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
             <div className="notes-container">
               <textarea 
                 className="sidebar-desc-area" 
-                value={task.notes || ''} 
-                onChange={e => handleSaveField('notes', e.target.value)} 
+                value={editNotes} 
+                onChange={e => setEditNotes(e.target.value)} 
+                onBlur={() => handleSaveField('notes', editNotes)}
                 placeholder="Write your task notes here..." 
                 rows={6} 
                 style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', marginTop: '8px' }}
@@ -141,14 +163,15 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
           <div className="sidebar-section">
             <div className="section-header"><History size={14} className="accent" /><h3>Activity</h3></div>
             <div className="modern-history-list">
-              {history.length === 0 ? (
+              {combinedHistory.length === 0 ? (
                 <p className="empty-history">No history found.</p>
               ) : (
-                history.slice(0, 8).map(entry => (
-                  <div key={entry.id} className="history-item">
+                combinedHistory.slice(0, 15).map(entry => (
+                  <div key={entry.id} className={`history-item ${entry.type}`}>
                     <div className="history-indicator" />
                     <div className="history-content">
-                      <span className="history-text">{entry.action.replace('_', ' ')}</span>
+                      <span className="history-text">{entry.action}</span>
+                      {entry.content && <p className="history-subtext">{entry.content}</p>}
                       <span className="history-date">{new Date(entry.created_at).toLocaleString()}</span>
                     </div>
                   </div>

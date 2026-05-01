@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useTeams } from '../hooks/useTeams';
 import { useTasks } from '../hooks/useTasks';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, UserPlus, Trash2, Send, MessageSquare, Plus, Hash, X, Check, Image as ImageIcon, Loader2, Eraser, ClipboardList } from 'lucide-react';
+import { Users, UserPlus, Trash2, Send, MessageSquare, Plus, Hash, X, Check, Image as ImageIcon, Loader2, Eraser, ClipboardList, LogOut } from 'lucide-react';
+
 import TeamTasksSidebar from '../components/teams/TeamTasksSidebar';
 import ConfirmModal from '../components/ui/ConfirmModal';
 
 const TeamPage = () => {
   const { user } = useAuth();
-  const { teams, invites, loading, createTeam, deleteTeam, inviteToTeam, acceptInvite, declineInvite, sendMessage, clearTeamMessages, uploadTeamFile, kickMember, presence } = useTeams();
+  const { teams, invites, loading, createTeam, deleteTeam, inviteToTeam, acceptInvite, declineInvite, sendMessage, clearTeamMessages, uploadTeamFile, kickMember, leaveTeam, presence } = useTeams();
+
   const { tasks } = useTasks();
   const [activeTeamId, setActiveTeamId] = useState(null);
   const [newTeamName, setNewTeamName] = useState('');
@@ -16,6 +18,7 @@ const TeamPage = () => {
   const [message, setMessage] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showInviteSuccess, setShowInviteSuccess] = useState(false);
   const [showMembersHud, setShowMembersHud] = useState(false);
   const [showTeamTasks, setShowTeamTasks] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -23,8 +26,13 @@ const TeamPage = () => {
   const [teamToDelete, setTeamToDelete] = useState(null);
   const [showClearChatConfirm, setShowClearChatConfirm] = useState(false);
   const [showKickConfirm, setShowKickConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [memberToKick, setMemberToKick] = useState(null);
+  const [mentionSuggestions, setMentionSuggestions] = useState([]);
+
+  const [mentionIndex, setMentionIndex] = useState(-1);
   const fileInputRef = React.useRef(null);
+  const inputRef = React.useRef(null);
 
   const activeTeam = teams.find(t => t.id === activeTeamId) || (teams.length > 0 ? teams[0] : null);
   const teamTasks = tasks.filter(t => t.team_id === activeTeam?.id);
@@ -36,7 +44,7 @@ const TeamPage = () => {
   useEffect(() => { if (activeTeam && !activeTeamId) setActiveTeamId(activeTeam.id); }, [activeTeam, activeTeamId]);
 
   const handleCreateTeam = async (e) => { e.preventDefault(); if (!newTeamName.trim()) return; await createTeam(newTeamName); setNewTeamName(''); setShowCreateModal(false); };
-  const handleInvite = async (e) => { e.preventDefault(); if (!inviteEmail.trim() || !activeTeam) return; const { error } = await inviteToTeam(activeTeam.id, inviteEmail); if (error) alert(error.message); else { alert('Invite sent!'); setInviteEmail(''); setShowInviteModal(false); } };
+  const handleInvite = async (e) => { e.preventDefault(); if (!inviteEmail.trim() || !activeTeam) return; const { error } = await inviteToTeam(activeTeam.id, inviteEmail); if (error) { alert(error.message); } else { setInviteEmail(''); setShowInviteModal(false); setShowInviteSuccess(true); } };
   
   const handleDeleteTeam = async () => { 
     if (!teamToDelete) return;
@@ -51,7 +59,36 @@ const TeamPage = () => {
     await clearTeamMessages(activeTeam.id); 
     setShowClearChatConfirm(false);
   };
-  const handleSendMessage = async (e) => { if (e) e.preventDefault(); if (!message.trim() || !activeTeamId) return; if (sendMessage) await sendMessage(activeTeamId, message); setMessage(''); };
+
+  const handleLeaveTeam = async () => {
+    if (!activeTeamId) return;
+    const { error } = await leaveTeam(activeTeamId);
+    if (error) alert('Error: ' + error.message);
+    else setActiveTeamId(null);
+    setShowLeaveConfirm(false);
+  };
+
+  const handleSendMessage = async (e) => { 
+    if (e) e.preventDefault(); 
+    if (!message.trim() || !activeTeamId) return; 
+
+    let metadata = {};
+    const mentionMatch = message.match(/@(\w+)/);
+    if (mentionMatch) {
+      const mentionedUsername = mentionMatch[1];
+      const mentionedMember = activeTeam.members?.find(m => m.username.toLowerCase() === mentionedUsername.toLowerCase());
+      if (mentionedMember) {
+        metadata = {
+          type: 'ping',
+          pinged_user_id: mentionedMember.user_id
+        };
+      }
+    }
+
+    if (sendMessage) await sendMessage(activeTeamId, message, metadata); 
+    setMessage(''); 
+    setMentionSuggestions([]);
+  };
   
   const handlePingUser = async (memberId, username) => {
     if (!activeTeamId || !sendMessage) return;
@@ -88,6 +125,68 @@ const TeamPage = () => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) { if (item.type.startsWith('image/')) { const file = item.getAsFile(); if (file) await handleFileSelect({ target: { files: [file] } }); } }
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    const cursorPosition = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (mentionMatch && activeTeam?.members) {
+      const query = mentionMatch[1].toLowerCase();
+      const suggestions = activeTeam.members
+        .filter(m => m.user_id !== user.id && m.username.toLowerCase().startsWith(query))
+        .map(m => m.username);
+      setMentionSuggestions(suggestions);
+      setMentionIndex(0);
+    } else {
+      setMentionSuggestions([]);
+    }
+  };
+
+  const handleSuggestionClick = (username) => {
+    const cursorPosition = inputRef.current.selectionStart;
+    const textBeforeCursor = message.slice(0, cursorPosition);
+    const textAfterCursor = message.slice(cursorPosition);
+    const newTextBefore = textBeforeCursor.replace(/@(\w*)$/, `@${username} `);
+    setMessage(newTextBefore + textAfterCursor);
+    setMentionSuggestions([]);
+    inputRef.current.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (mentionSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % mentionSuggestions.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleSuggestionClick(mentionSuggestions[mentionIndex]);
+      } else if (e.key === 'Escape') {
+        setMentionSuggestions([]);
+      }
+    }
+  };
+
+  const renderMessageContent = (content) => {
+    if (!content) return null;
+    const parts = content.split(/(@\w+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        const username = part.substring(1);
+        const isMember = activeTeam.members?.some(m => m.username.toLowerCase() === username.toLowerCase());
+        if (isMember) {
+          return <span key={i} className="mention">@{username}</span>;
+        }
+      }
+      return part;
+    });
   };
 
   if (loading) return (<div className="loading-screen"><div className="loader"></div><p className="text-secondary text-sm">Loading teams...</p></div>);
@@ -185,25 +284,41 @@ const TeamPage = () => {
                 )}
                 <button className="nav-link-btn" onClick={() => setShowInviteModal(true)} title="Invite"><UserPlus size={18} /></button>
                 {activeTeam.messages?.some(m => m.user_id === user.id) && (<button className="nav-link-btn danger" onClick={() => setShowClearChatConfirm(true)} title="Clear"><Eraser size={18} /></button>)}
-                {activeTeam.created_by === user.id && (<button className="nav-link-btn danger" onClick={() => { setTeamToDelete(activeTeam.id); setShowDeleteTeamConfirm(true); }} title="Delete"><Trash2 size={18} /></button>)}
+                {activeTeam.created_by === user.id ? (
+                  <button className="nav-link-btn danger" onClick={() => { setTeamToDelete(activeTeam.id); setShowDeleteTeamConfirm(true); }} title="Delete Team"><Trash2 size={18} /></button>
+                ) : (
+                  <button className="nav-link-btn danger" onClick={() => setShowLeaveConfirm(true)} title="Leave Team"><LogOut size={18} /></button>
+                )}
               </div>
+
             </div>
             <div className="chat-messages">
               {activeTeam.messages?.length > 0 ? (
                 <>
                   {activeTeam.messages.map(msg => {
                     const isMe = msg.user_id === user.id;
+                    const isSystem = msg.metadata?.type === 'system';
                     const isPinged = msg.metadata?.type === 'ping' && msg.metadata?.pinged_user_id === user.id;
                     const userColor = msg.user_metadata?.theme_color || 'var(--primary-accent)';
+
+                    if (isSystem) {
+                      return (
+                        <div key={msg.id} className="system-msg">
+                          <span className="system-msg-content">{renderMessageContent(msg.content)}</span>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={msg.id} className={`msg ${isMe ? 'sent' : 'received'} ${isPinged ? 'pinged-msg' : ''}`} style={{ '--bubble-color': userColor, borderLeft: !isMe ? `3px solid ${userColor}` : 'none', borderRight: isMe ? `3px solid ${userColor}` : 'none' }}>
                         <span className="msg-user" style={{ color: isMe ? 'rgba(255,255,255,0.9)' : userColor, fontWeight: 900, fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
                           {msg.user_metadata?.username || (isMe ? 'You' : 'Member')}
                         </span>
                         {msg.metadata?.image_url && <img src={msg.metadata.image_url} alt="Shared" className="msg-img" onClick={() => window.open(msg.metadata.image_url, '_blank')} />}
-                        <p>{msg.content}</p>
+                        <p>{renderMessageContent(msg.content)}</p>
                       </div>
                     );
+
                   })}
                   <div ref={messagesEndRef} />
                 </>
@@ -218,7 +333,27 @@ const TeamPage = () => {
                   <button type="button" className="nav-link-btn" style={{ border: 'none', background: 'transparent', width: '32px', padding: 0 }} onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                     {isUploading ? <Loader2 size={18} className="spin" /> : <ImageIcon size={18} />}
                   </button>
-                  <input type="text" value={message} onChange={e => setMessage(e.target.value)} placeholder="Type a message..." />
+                  <input 
+                    ref={inputRef}
+                    type="text" 
+                    value={message} 
+                    onChange={handleInputChange} 
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a message..." 
+                  />
+                  {mentionSuggestions.length > 0 && (
+                    <div className="mention-suggestions">
+                      {mentionSuggestions.map((suggestion, i) => (
+                        <div 
+                          key={suggestion} 
+                          className={`suggestion-item ${i === mentionIndex ? 'active' : ''}`}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          @{suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button type="submit" className="send-btn" disabled={!message.trim() || isUploading}><Send size={18} /></button>
               </form>
@@ -284,6 +419,26 @@ const TeamPage = () => {
         onCancel={() => { setShowKickConfirm(false); setMemberToKick(null); }}
         confirmText="Kick Member"
         type="danger"
+      />
+      <ConfirmModal 
+        isOpen={showLeaveConfirm}
+        title="Leave Team?"
+        message="Are you sure you want to leave this team? You will no longer have access to its messages or tasks unless invited back."
+        onConfirm={handleLeaveTeam}
+        onCancel={() => setShowLeaveConfirm(false)}
+        confirmText="Leave Team"
+        type="danger"
+      />
+
+      <ConfirmModal 
+        isOpen={showInviteSuccess}
+        title="Invite Sent!"
+        message={`An invitation has been successfully sent to ${inviteEmail || 'the user'}.`}
+        onConfirm={() => { setShowInviteSuccess(false); setInviteEmail(''); }}
+        onCancel={() => { setShowInviteSuccess(false); setInviteEmail(''); }}
+        confirmText="Got it"
+        cancelText="Close"
+        type="success"
       />
     </div>
   );

@@ -23,7 +23,6 @@ const LoadingScreen = ({ onComplete, duration = 3000, title = "TaskManager", sta
       <div className="splash-content">
         <div className="splash-logo-container">
           <img src="/favicon.svg" alt="Logo" className="splash-logo" />
-          <div className="splash-logo-glow" />
         </div>
         <div className="splash-text">
           <h1 className="splash-title">{title}</h1>

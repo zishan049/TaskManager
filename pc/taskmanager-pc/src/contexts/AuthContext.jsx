@@ -153,8 +153,36 @@ export const AuthProvider = ({ children }) => {
     },
     deleteAccount: async () => {
       try {
-        // Call the RPC function to delete the auth user
-        // This will trigger the database trigger to delete the profile and other data
+        // 1. Find all images sent by this user in ANY team to clean up storage
+        const { data: messages } = await supabase
+          .from('team_messages')
+          .select('metadata')
+          .eq('user_id', user.id);
+
+        const imageUrls = messages
+          ?.map(m => m.metadata?.image_url)
+          .filter(url => url && url.includes('chat-attachments')) || [];
+
+        if (imageUrls.length > 0) {
+          const filePaths = imageUrls.map(url => {
+            const bucketToken = 'chat-attachments/';
+            if (url.includes(bucketToken)) {
+              const path = url.split(bucketToken)[1].split('?')[0];
+              // Handle potential public/ prefix if getPublicUrl was used
+              return path.startsWith('public/') ? path.replace('public/', '') : path;
+            }
+            return null;
+          }).filter(Boolean);
+
+          if (filePaths.length > 0) {
+            await supabase.storage
+              .from('chat-attachments')
+              .remove(filePaths);
+          }
+        }
+
+        // 2. Call the RPC function to delete the auth user
+        // This will trigger the database cascades we set up to delete profile, messages, etc.
         const { error: rpcError } = await supabase.rpc('delete_own_account');
         if (rpcError) throw rpcError;
 
