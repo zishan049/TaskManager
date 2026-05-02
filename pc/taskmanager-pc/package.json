@@ -1,8 +1,7 @@
 {
   "name": "taskmanager-pc",
   "private": true,
-  "version": "0.1.23",
-
+  "version": "0.1.24",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
     "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-fs": "^2.5.0",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",

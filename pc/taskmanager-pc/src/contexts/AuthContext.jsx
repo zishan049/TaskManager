@@ -195,6 +195,10 @@ export const AuthProvider = ({ children }) => {
         return { error: err };
       }
     },
+    updatePassword: async (new_password) => {
+      const { error } = await supabase.auth.updateUser({ password: new_password });
+      return { error };
+    },
     user,
     profile,
     session,
