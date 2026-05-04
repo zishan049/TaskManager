@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Palette, Zap, Crown, Droplets, Power } from 'lucide-react';
+import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Palette, Zap, Crown, Droplets, Power, Clock } from 'lucide-react';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -28,6 +28,13 @@ const SettingsPage = () => {
   const [currentAppVersion, setCurrentAppVersion] = useState('0.1.0');
   const [isAutostartEnabled, setIsAutostartEnabled] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [dashboardSettings, setDashboardSettings] = useState(() => {
+    const saved = localStorage.getItem('dashboard_settings');
+    const settings = saved ? JSON.parse(saved) : { showClock: true, hour12: true };
+    // Ensure hour12 exists for legacy users
+    if (settings.hour12 === undefined) settings.hour12 = true;
+    return settings;
+  });
 
   useEffect(() => {
     const init = async () => {
@@ -81,6 +88,30 @@ const SettingsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleClock = () => {
+    const newSettings = { ...dashboardSettings, showClock: !dashboardSettings.showClock };
+    setDashboardSettings(newSettings);
+    localStorage.setItem('dashboard_settings', JSON.stringify(newSettings));
+    window.dispatchEvent(new CustomEvent('dashboard_settings_updated'));
+    addNotification({
+      title: 'Dashboard Updated',
+      message: `Clock card ${newSettings.showClock ? 'enabled' : 'disabled'}.`,
+      type: 'info'
+    });
+  };
+
+  const handleToggleHourFormat = () => {
+    const newSettings = { ...dashboardSettings, hour12: !dashboardSettings.hour12 };
+    setDashboardSettings(newSettings);
+    localStorage.setItem('dashboard_settings', JSON.stringify(newSettings));
+    window.dispatchEvent(new CustomEvent('dashboard_settings_updated'));
+    addNotification({
+      title: 'Time Format Updated',
+      message: `Clock set to ${newSettings.hour12 ? '12-hour' : '24-hour'} format.`,
+      type: 'info'
+    });
   };
 
   const handleThemeChange = async (themeObj) => {
@@ -280,6 +311,93 @@ const SettingsPage = () => {
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: theme === t.id ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{t.label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title"><Zap size={18} /><span>Dashboard Preferences</span></div>
+          <p className="text-secondary text-sm" style={{ marginTop: '0.5rem' }}>Customize your primary workstation view.</p>
+          
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ 
+              background: 'var(--surface-2)', 
+              padding: '1rem', 
+              borderRadius: '12px', 
+              border: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <RefreshCw size={16} className={dashboardSettings.showClock ? 'text-primary' : 'text-secondary'} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-sm font-semibold">Show Operational Clock</span>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Display real-time clock in stats row</span>
+                </div>
+              </div>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={dashboardSettings.showClock} 
+                  onChange={handleToggleClock}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: dashboardSettings.showClock ? 'var(--primary-accent)' : 'var(--border-color)',
+                  transition: '.4s',
+                  borderRadius: '34px'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    height: '16px', width: '16px',
+                    left: '3px', bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '.4s',
+                    borderRadius: '50%',
+                    transform: dashboardSettings.showClock ? 'translateX(18px)' : 'translateX(0)'
+                  }} />
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clock size={16} className="text-primary" />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="text-sm font-semibold">24-Hour Format</span>
+                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Switch between 12h and 24h display</span>
+                </div>
+              </div>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={!dashboardSettings.hour12} 
+                  onChange={handleToggleHourFormat}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: !dashboardSettings.hour12 ? 'var(--primary-accent)' : 'var(--border-color)',
+                  transition: '.4s',
+                  borderRadius: '34px'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    height: '16px', width: '16px',
+                    left: '3px', bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '.4s',
+                    borderRadius: '50%',
+                    transform: !dashboardSettings.hour12 ? 'translateX(18px)' : 'translateX(0)'
+                  }} />
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 

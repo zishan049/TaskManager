@@ -59,6 +59,10 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout 
             <button className="nav-link danger" onClick={handleLogoutClick} title="Logout"><LogOut size={18} /></button>
           </div>
         </div>
+        <div className="header-divider-container" aria-hidden="true">
+          <div className="animated-line base" />
+          <div className="animated-line hover" />
+        </div>
       </header>
       <div className="theme-watermark" aria-hidden="true" />
       <main className="content page-enter">{children}</main>

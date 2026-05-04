@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
+import { version } from '../package.json';
 import { useAuth } from './contexts/AuthContext';
 
 import { useTasks } from './hooks/useTasks';
@@ -87,6 +88,32 @@ function AppContent() {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [calendarFilterDate, setCalendarFilterDate] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [dashboardSettings, setDashboardSettings] = useState(() => {
+    const saved = localStorage.getItem('dashboard_settings');
+    const settings = saved ? JSON.parse(saved) : { showClock: true, hour12: true };
+    if (settings.hour12 === undefined) settings.hour12 = true;
+    return settings;
+  });
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('dashboard_settings');
+      if (saved) setDashboardSettings(JSON.parse(saved));
+    };
+    window.addEventListener('dashboard_settings_updated', handleStorageChange);
+    return () => window.removeEventListener('dashboard_settings_updated', handleStorageChange);
+  }, []);
+
+  const handleSplashComplete = React.useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  useEffect(() => {
+    if (showSplash) return;
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [showSplash]);
 
   const visibleTasks = React.useMemo(() => {
     if (!tasks) return [];
@@ -108,7 +135,7 @@ function AppContent() {
   }, [user]);
 
   if (showSplash) {
-    return <LoadingScreen onComplete={() => setShowSplash(false)} duration={2000} />;
+    return <LoadingScreen onComplete={handleSplashComplete} duration={2000} />;
   }
 
   if (isLoggingOut) {
@@ -155,6 +182,12 @@ function AppContent() {
                   {tasks?.length > 0 ? Math.round(((tasks || []).filter(t => t.status === 'done').length / tasks.length) * 100) : 0}%
                 </span>
                 <span className="stat-label">Productivity</span>
+              </div>
+              <div className={`stat-box clock-card ${!dashboardSettings.showClock ? 'hidden' : ''}`}>
+                  <span className="clock-time">
+                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: dashboardSettings.hour12 })}
+                  </span>
+                <span className="stat-label">{currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
               </div>
             </div>
 
@@ -207,7 +240,10 @@ function AppContent() {
       <QuickAdd isOpen={isQuickAddOpen} onClose={() => setIsQuickAddOpen(false)} />
       <TaskSidebar task={tasks?.find(t => t.id === selectedTaskId)} isOpen={isSidebarOpen} onClose={() => { setIsSidebarOpen(false); setSelectedTaskId(null); }} />
       <div className={`beta-badge ${hasUpdate ? 'update-available' : ''}`} onClick={() => hasUpdate && setCurrentView('settings')}>
-        {hasUpdate ? 'Update' : 'Beta'}
+        <div className="beta-badge-content">
+          <span className="label">{hasUpdate ? 'Update' : 'Beta'}</span>
+          <span className="version">v{version}</span>
+        </div>
       </div>
 
     </>

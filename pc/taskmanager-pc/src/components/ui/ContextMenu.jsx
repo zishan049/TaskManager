@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2, Cpu, Circle, Zap, Flame, Crown, Droplets } from 'lucide-react';
+import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2, Cpu, Circle, Zap, Flame, Crown, Droplets, Clock } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -9,6 +9,27 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
   const menuRef = useRef(null);
   const { theme, toggleTheme, setTheme } = useTheme();
   const { updateProfile } = useAuth();
+
+  const [dashboardSettings, setDashboardSettings] = useState(() => {
+    const saved = localStorage.getItem('dashboard_settings');
+    return saved ? JSON.parse(saved) : { showClock: true };
+  });
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('dashboard_settings');
+      if (saved) setDashboardSettings(JSON.parse(saved));
+    };
+    window.addEventListener('dashboard_settings_updated', handleStorageChange);
+    return () => window.removeEventListener('dashboard_settings_updated', handleStorageChange);
+  }, []);
+
+  const toggleClock = () => {
+    const newSettings = { ...dashboardSettings, showClock: !dashboardSettings.showClock };
+    setDashboardSettings(newSettings);
+    localStorage.setItem('dashboard_settings', JSON.stringify(newSettings));
+    window.dispatchEvent(new CustomEvent('dashboard_settings_updated'));
+  };
 
   const themes = [
     { id: 'light', icon: Sun, color: '#3b82f6' },
@@ -138,6 +159,11 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
         <div className={`context-item ${currentView === 'settings' ? 'active' : ''}`} onClick={() => handleItemClick(() => onViewChange('settings'))}>
           <Settings size={18} />
           <span>Settings</span>
+        </div>
+
+        <div className={`context-item ${dashboardSettings.showClock ? 'active' : ''}`} onClick={() => handleItemClick(toggleClock)}>
+          <Clock size={18} />
+          <span>{dashboardSettings.showClock ? 'Hide Dashboard Clock' : 'Show Dashboard Clock'}</span>
         </div>
         
         {(theme === 'light' || theme === 'dark') ? (

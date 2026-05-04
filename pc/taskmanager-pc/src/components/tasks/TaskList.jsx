@@ -67,7 +67,10 @@ const TaskList = ({ tasks, loading, onUpdate, onTaskClick, onDelete }) => {
             <div className="task-meta">
               <span className={`priority-badge ${task.priority}`}>{task.priority}</span>
               {task.due_date && (
-                <span className="meta-item"><Clock size={12} /> {new Date(task.due_date).toLocaleDateString()}</span>
+                <span className="meta-item">
+                  <Clock size={12} /> {new Date(task.due_date).toLocaleDateString()}
+                  {task.due_time && <span style={{ marginLeft: '4px', opacity: 0.8 }}>at {task.due_time.slice(0, 5)}</span>}
+                </span>
               )}
               {task.tags?.length > 0 && (
                 <div className="meta-item">

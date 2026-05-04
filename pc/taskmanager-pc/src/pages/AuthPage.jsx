@@ -8,7 +8,14 @@ const AuthPage = () => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { signIn, signUp, showSuccessPopup, setShowSuccessPopup, newUserData, setNewUserData } = useAuth();
+  const { 
+    signIn, 
+    signUp, 
+    showSuccessPopup, 
+    setShowSuccessPopup, 
+    newUserData, 
+    setNewUserData 
+  } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,6 +124,8 @@ const AuthPage = () => {
             {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
           </button>
         </form>
+
+
 
         <div className="auth-switch">
           <span>{isSignUp ? 'Already have an account?' : "Don't have an account?"}</span>

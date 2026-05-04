@@ -12,25 +12,60 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
   const [editDesc, setEditDesc] = useState('');
   const [editPriority, setEditPriority] = useState('medium');
   const [editDueDate, setEditDueDate] = useState('');
+  const [editDueTime, setEditDueTime] = useState('');
+  const [isTimeFocused, setIsTimeFocused] = useState(false);
   const [editTags, setEditTags] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [historyEntries, setHistoryEntries] = useState([]);
   const { teamNotes, fetchTeamNotes } = useTeams();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const bottomRef = useRef(null);
+  const [hour12, setHour12] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('dashboard_settings');
+    if (saved) {
+      const settings = JSON.parse(saved);
+      if (settings.hour12 !== undefined) setHour12(settings.hour12);
+    }
+  }, []);
+
+  const formatTime = (time24, is12h) => {
+    if (!time24) return '';
+    if (!is12h) return time24;
+    const [h, m] = time24.split(':');
+    if (!h || !m) return time24;
+    const hh = parseInt(h);
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = hh % 12 || 12;
+    return `${h12.toString().padStart(2, '0')}:${m} ${ampm}`;
+  };
+
+  const parseTime = (timeStr, is12h) => {
+    if (!timeStr) return '';
+    if (!is12h) return timeStr;
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return timeStr;
+    let [_, h, m, ampm] = match;
+    let hh = parseInt(h);
+    if (ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
+    if (ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
+    return `${hh.toString().padStart(2, '0')}:${m}`;
+  };
 
   useEffect(() => {
     if (task) {
       setEditTitle(task.title || '');
       setEditDesc(task.description || '');
       setEditPriority(task.priority || 'medium');
-      setEditDueDate(task.due_date || '');
+      setEditDueDate(task.due_date ? task.due_date.split('T')[0] : '');
+      setEditDueTime(formatTime(task.due_time || '', hour12));
       setEditTags(task.tags?.join(', ') || '');
       setEditNotes(task.notes || '');
       loadHistory(task.id);
       if (task.team_id) fetchTeamNotes(task.team_id);
     }
-  }, [task]);
+  }, [task, hour12]);
 
   const loadHistory = async (taskId) => {
     const data = await fetchTaskHistory(taskId);
@@ -42,6 +77,8 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
     const updates = {};
     if (field === 'tags') {
       updates.tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    } else if (field === 'due_time') {
+      updates.due_time = parseTime(value, hour12);
     } else {
       updates[field] = value;
     }
@@ -82,6 +119,15 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
         type: 'team_note'
       }))
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const timeOptions = Array.from({ length: 48 }, (_, i) => {
+    const hours = Math.floor(i / 2);
+    const minutes = i % 2 === 0 ? '00' : '30';
+    const time24 = `${hours.toString().padStart(2, '0')}:${minutes}`;
+    return formatTime(time24, hour12);
+  });
+
+  const filteredTimeOptions = timeOptions.filter(t => t.includes(editDueTime));
 
   return (
     <>
@@ -128,10 +174,71 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
             <div className="sidebar-section">
               <div className="section-header"><Calendar size={14} className="accent" /><h3>Due Date</h3></div>
               <div className="date-input-wrapper">
-                <input type="date" className="minimal-input" value={editDueDate} onChange={e => { setEditDueDate(e.target.value); handleSaveField('due_date', e.target.value); }} />
+                <input type="date" className="minimal-input" style={{ width: '100%', colorScheme: 'dark', color: 'var(--text-primary)' }} value={editDueDate} onChange={e => { setEditDueDate(e.target.value); handleSaveField('due_date', e.target.value); }} />
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="section-header"><Clock size={14} className="accent" /><h3>Due Time</h3></div>
+              <div className="date-input-wrapper" style={{ position: 'relative' }}>
+                <input 
+                  type="text" 
+                  placeholder={hour12 ? "HH:MM AM/PM" : "HH:MM"}
+                  className="minimal-input" 
+                  value={editDueTime} 
+                  onChange={e => setEditDueTime(e.target.value)}
+                  onFocus={() => setIsTimeFocused(true)}
+                  onBlur={() => {
+                    handleSaveField('due_time', editDueTime);
+                    setTimeout(() => setIsTimeFocused(false), 200);
+                  }}
+                  style={{ width: '100%', fontFamily: 'var(--font-digital)', letterSpacing: '1px' }} 
+                />
+                {isTimeFocused && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    bottom: 'calc(100% + 8px)', 
+                    left: 0, 
+                    right: 0, 
+                    background: 'var(--surface-color)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '12px', 
+                    maxHeight: '180px', 
+                    overflowY: 'auto', 
+                    zIndex: 100,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    {filteredTimeOptions.map(t => (
+                      <button 
+                        key={t} 
+                        type="button" 
+                        onClick={() => { setEditDueTime(t); handleSaveField('due_time', t); }}
+                        style={{ 
+                          padding: '8px 12px', 
+                          textAlign: 'left', 
+                          background: 'transparent', 
+                          border: 'none', 
+                          color: 'var(--text-primary)', 
+                          fontSize: '0.85rem',
+                          fontFamily: 'var(--font-digital)',
+                          letterSpacing: '0.05em',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.target.style.background = 'var(--surface-2)'}
+                        onMouseLeave={e => e.target.style.background = 'transparent'}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
 
           <div className="sidebar-section">
             <div className="section-header"><Tag size={14} className="accent" /><h3>Tags</h3></div>

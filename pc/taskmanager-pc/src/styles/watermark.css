@@ -27,3 +27,59 @@
     opacity: 0.04;
   }
 }
+
+/* Animated Header Divider Line */
+.header-divider-container {
+  width: 100%;
+  height: 12px; /* Large hit area */
+  position: absolute;
+  bottom: -5px; /* Center on the edge */
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: transparent;
+  cursor: pointer;
+}
+
+.animated-line {
+  width: 100%;
+  height: 2px;
+  position: absolute;
+  left: 0;
+  background-image: linear-gradient(to right, var(--primary-accent) 50%, transparent 50%);
+  background-size: 30px 100%;
+  background-repeat: repeat-x;
+  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+/* The slow, default state */
+.animated-line.base {
+  animation: slideDashes 6s linear infinite;
+  opacity: 0.4;
+  filter: brightness(0.8);
+}
+
+/* The fast, high-energy state */
+.animated-line.hover {
+  animation: slideDashes 0.8s linear infinite;
+  opacity: 0;
+  filter: brightness(1.6);
+}
+
+/* Cross-fade on hover */
+.header-divider-container:hover .animated-line.base {
+  opacity: 0;
+}
+
+.header-divider-container:hover .animated-line.hover {
+  opacity: 1;
+}
+
+@keyframes slideDashes {
+  from { background-position: 0 0; }
+  to { background-position: 60px 0; }
+}
