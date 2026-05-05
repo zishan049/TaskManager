@@ -22,6 +22,7 @@
   
   /* Typography */
   --text-primary: #171717;
+  --text-primary-rgb: 23, 23, 23;
   --text-secondary: #525252;
   --text-tertiary: #a3a3a3;
   --text-inverse: #ffffff;
@@ -118,6 +119,7 @@
   --primary-hover: #2563eb;
 
   --text-primary: #eff6ff;
+  --text-primary-rgb: 239, 246, 255;
   --text-secondary: #94a3b8;
   --text-tertiary: #475569;
   --text-inverse: #000000;

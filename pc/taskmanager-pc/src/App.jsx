@@ -13,11 +13,13 @@ import QuickAdd from './components/tasks/QuickAdd';
 import TeamPage from './pages/TeamPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import DiaryPage from './pages/DiaryPage';
 import TaskSidebar from './components/tasks/TaskSidebar';
 import MiniCalendar from './components/ui/MiniCalendar';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ContextMenu from './components/ui/ContextMenu';
 import { useNavigation } from './contexts/NavigationContext';
+import './styles/diary.css';
 
 
 class ErrorBoundary extends React.Component {
@@ -157,33 +159,33 @@ function AppContent() {
         return (
           <div className="dashboard">
             <section className="welcome-section">
-              <div className="welcome-header">
+              <div className="welcome-header animate-text">
                 <img src="/favicon.svg" alt="logo" className="accent" width={24} height={24} />
                 <h2 className="welcome-title">
                   Hello, {profile?.username || user.user_metadata?.username || user.email?.split('@')[0]}
                 </h2>
               </div>
-              <p className="welcome-subtitle">
+              <p className="welcome-subtitle animate-text">
                 {profile?.bio || "Here's what's happening with your tasks today."}
               </p>
             </section>
 
             <div className="stats-row">
-              <div className="stat-box">
+              <div className="stat-box animate-card">
                 <span className="stat-num">{(tasks || []).filter(t => t.status !== 'done').length}</span>
                 <span className="stat-label">To Do</span>
               </div>
-              <div className="stat-box">
+              <div className="stat-box animate-card">
                 <span className="stat-num" style={{ color: 'var(--success)' }}>{(tasks || []).filter(t => t.status === 'done').length}</span>
                 <span className="stat-label">Done</span>
               </div>
-              <div className="stat-box">
+              <div className="stat-box animate-card">
                 <span className="stat-num" style={{ color: 'var(--primary-accent)' }}>
                   {tasks?.length > 0 ? Math.round(((tasks || []).filter(t => t.status === 'done').length / tasks.length) * 100) : 0}%
                 </span>
                 <span className="stat-label">Productivity</span>
               </div>
-              <div className={`stat-box clock-card ${!dashboardSettings.showClock ? 'hidden' : ''}`}>
+              <div className={`stat-box clock-card animate-card ${!dashboardSettings.showClock ? 'hidden' : ''}`}>
                   <span className="clock-time">
                     {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: dashboardSettings.hour12 })}
                   </span>
@@ -193,16 +195,18 @@ function AppContent() {
 
             <div className="dashboard-main-grid">
               <section className="tasks-preview">
-                <div className="card-title"><ListTodo size={18} /><span>Active Tasks</span></div>
-                <TaskList 
-                  tasks={visibleTasks} 
-                  loading={tasksLoading} 
-                  onUpdate={updateTask}
-                  onDelete={deleteTask}
-                  onTaskClick={(task) => { setSelectedTaskId(task.id); setIsSidebarOpen(true); }}
-                />
+                <div className="card-title animate-text"><ListTodo size={18} /><span>Active Tasks</span></div>
+                <div className="animate-text">
+                  <TaskList 
+                    tasks={visibleTasks} 
+                    loading={tasksLoading} 
+                    onUpdate={updateTask}
+                    onDelete={deleteTask}
+                    onTaskClick={(task) => { setSelectedTaskId(task.id); setIsSidebarOpen(true); }}
+                  />
+                </div>
               </section>
-              <aside className="dashboard-sidebar">
+              <aside className="dashboard-sidebar animate-calendar">
                 <MiniCalendar tasks={tasks || []} selectedDate={calendarFilterDate} onSelectDate={setCalendarFilterDate} />
               </aside>
             </div>
@@ -210,6 +214,8 @@ function AppContent() {
         );
       case 'team':
         return <TeamPage />;
+      case 'diary':
+        return <DiaryPage />;
       case 'history':
         return <HistoryPage />;
       case 'settings':
@@ -239,7 +245,7 @@ function AppContent() {
       </MainLayout>
       <QuickAdd isOpen={isQuickAddOpen} onClose={() => setIsQuickAddOpen(false)} />
       <TaskSidebar task={tasks?.find(t => t.id === selectedTaskId)} isOpen={isSidebarOpen} onClose={() => { setIsSidebarOpen(false); setSelectedTaskId(null); }} />
-      <div className={`beta-badge ${hasUpdate ? 'update-available' : ''}`} onClick={() => hasUpdate && setCurrentView('settings')}>
+      <div className={`beta-badge animate-badge ${hasUpdate ? 'update-available' : ''}`} onClick={() => hasUpdate && setCurrentView('settings')}>
         <div className="beta-badge-content">
           <span className="label">{hasUpdate ? 'Update' : 'Beta'}</span>
           <span className="version">v{version}</span>

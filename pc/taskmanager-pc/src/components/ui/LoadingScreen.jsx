@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-const LoadingScreen = ({ onComplete, duration = 3000, title = "TaskManager", status = "Organizing your workspace..." }) => {
+const LoadingScreen = ({ onComplete, duration = 3000 }) => {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
@@ -24,12 +24,8 @@ const LoadingScreen = ({ onComplete, duration = 3000, title = "TaskManager", sta
         <div className="splash-logo-container">
           <img src="/favicon.svg" alt="Logo" className="splash-logo" />
         </div>
-        <div className="splash-text">
-          <h1 className="splash-title">{title}</h1>
-          <div className="splash-loader-bar">
-            <div className="splash-progress" style={{ animationDuration: `${duration}ms` }} />
-          </div>
-          <p className="splash-status">{status}</p>
+        <div className="splash-loader-bar">
+          <div className="splash-progress" style={{ animationDuration: `${duration}ms` }} />
         </div>
       </div>
     </div>

@@ -4,14 +4,62 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "updater:default",
     "core:app:default",
+    "core:default",
+    "core:window:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
     "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",
-    "core:window:default"
+    "updater:default",
+    "core:path:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-write",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-create",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-copy-file",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "**" }]
+    },
+    "fs:scope-exe-recursive",
+    "fs:scope-applocaldata-recursive",
+    "fs:scope-home-recursive",
+    "core:path:default",
+    "core:path:allow-resolve-directory",
+    "core:path:allow-resolve",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-confirm",
+    "dialog:allow-message"
   ]
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
-import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2, Cpu, Circle, Zap, Flame, Crown, Droplets, Clock } from 'lucide-react';
+import { Home, Users, History, Settings, Plus, LogOut, Sun, Moon, Palette, Maximize2, Minimize2, Cpu, Circle, Zap, Flame, Crown, Droplets, Clock, Book } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -146,6 +146,10 @@ const ContextMenu = ({ currentView, onViewChange, onQuickAdd, onLogout, username
         <div className={`context-item ${currentView === 'team' ? 'active' : ''}`} onClick={() => handleItemClick(() => onViewChange('team'))}>
           <Users size={18} />
           <span>Teams</span>
+        </div>
+        <div className={`context-item ${currentView === 'diary' ? 'active' : ''}`} onClick={() => handleItemClick(() => onViewChange('diary'))}>
+          <Book size={18} />
+          <span>My Journal</span>
         </div>
         <div className={`context-item ${currentView === 'history' ? 'active' : ''}`} onClick={() => handleItemClick(() => onViewChange('history'))}>
           <History size={18} />
