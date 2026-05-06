@@ -1,5 +1,5 @@
 import { exists, mkdir, readTextFile, writeTextFile, readDir, copyFile, remove } from '@tauri-apps/plugin-fs';
-import { join, executableDir, basename, extname } from '@tauri-apps/api/path';
+import { join, appLocalDataDir, basename, extname } from '@tauri-apps/api/path';
 import { v4 as uuidv4 } from 'uuid';
 
 const DIARY_FOLDER = 'diary-data';
@@ -14,7 +14,7 @@ export async function getDiaryRoot() {
   if (customPath) return customPath;
 
   try {
-    const base = await executableDir();
+    const base = await appLocalDataDir();
     return await join(base, DIARY_FOLDER);
   } catch (e) {
     return null;
