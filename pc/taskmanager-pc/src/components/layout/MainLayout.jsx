@@ -1,11 +1,12 @@
 import React from 'react';
-import { Home, Users, History, Settings, Plus, LogOut, User, Sun, Moon, Book } from 'lucide-react';
+import { Home, Users, History, Settings, Plus, LogOut, User, Sun, Moon, Book, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 
 const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout }) => {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [hoveredItem, setHoveredItem] = React.useState(null);
   
   const handleLogoutClick = () => {
     if (onLogout) {
@@ -18,7 +19,7 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'team', icon: Users, label: 'Teams' },
-    { id: 'diary', icon: Book, label: 'My Journal' },
+    { id: 'diary', icon: Book, activeIcon: BookOpen, label: 'My Journal' },
     { id: 'history', icon: History, label: 'History' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
@@ -37,20 +38,29 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout 
               </div>
               <span className="logo-tagline">Let's Get Shit Done!!</span>
             </div>
-
+            
             <nav className="nav-links animate-nav">
-              {navItems.map(item => (
-                <div key={item.id} className={`nav-link ${currentView === item.id ? 'active' : ''}`} onClick={() => onViewChange(item.id)}>
-                  <item.icon size={14} style={{ flexShrink: 0 }} />
-                  <span>{item.label}</span>
-                </div>
-              ))}
+              {navItems.map(item => {
+                const Icon = (item.id === hoveredItem && item.activeIcon) ? item.activeIcon : item.icon;
+                return (
+                  <div 
+                    key={item.id} 
+                    className={`nav-link ${currentView === item.id ? 'active' : ''} nav-${item.id}`} 
+                    onClick={() => onViewChange(item.id)}
+                    onMouseEnter={() => setHoveredItem(item.id)}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Icon size={14} style={{ flexShrink: 0 }} />
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
             </nav>
           </div>
           <div className="header-right animate-nav">
             <button className="add-task-btn" onClick={onQuickAdd} title="Quick Add"><Plus size={22} /></button>
             {(theme === 'light' || theme === 'dark') && (
-              <button className="nav-link" onClick={toggleTheme} title="Toggle Theme">
+              <button className="nav-link theme-toggle" onClick={toggleTheme} title="Toggle Theme">
                 {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
             )}
@@ -58,7 +68,7 @@ const MainLayout = ({ children, currentView, onViewChange, onQuickAdd, onLogout 
               <User size={16} className="accent" />
               <span className="user-name" style={{ maxWidth: '100px', fontWeight: 600, fontSize: '0.875rem' }}>{username}</span>
             </div>
-            <button className="nav-link danger" onClick={handleLogoutClick} title="Logout"><LogOut size={18} /></button>
+            <button className="nav-link danger logout-btn" onClick={handleLogoutClick} title="Logout"><LogOut size={18} /></button>
           </div>
         </div>
         <div className="header-divider-container animate-divider" aria-hidden="true">

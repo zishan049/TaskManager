@@ -1,0 +1,183 @@
+/* ─── Dashboard / Home Page ────────────────────────────── */
+
+.dashboard {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+@media (min-width: 1440px) {
+  .dashboard {
+    max-width: var(--content-max-wide);
+  }
+}
+
+.welcome-section {
+  margin-bottom: 2.5rem;
+}
+
+.welcome-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.welcome-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.welcome-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.stats-row {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  perspective: 1000px;
+}
+
+.stat-box {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.25rem;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: auto;
+  white-space: nowrap; /* Prevent text wrapping during transitions */
+}
+
+.stat-box:hover {
+  transform: translateY(-2px);
+}
+
+.stat-box.clock-card.hidden {
+  flex: 0;
+  width: 0;
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(10px);
+}
+
+.stat-num {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.clock-time {
+  display: block;
+  font-family: var(--font-digital);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary-accent);
+  line-height: 1;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px rgba(var(--primary-accent-rgb), 0.25);
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-xl);
+}
+
+@media (max-width: 1024px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tasks-preview {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* Staggered Delays for Stats Cards */
+.stats-row .stat-box:nth-child(1) { animation-delay: 0.1s !important; }
+.stats-row .stat-box:nth-child(2) { animation-delay: 0.15s !important; }
+.stats-row .stat-box:nth-child(3) { animation-delay: 0.2s !important; }
+.stats-row .stat-box:nth-child(4) { animation-delay: 0.25s !important; }
+
+/* Welcome Section Staggering */
+.welcome-header.animate-text { animation-delay: 0.05s !important; }
+.welcome-subtitle.animate-text { animation-delay: 0.1s !important; }
+
+/* Task List Staggering */
+.tasks-preview.animate-text .card-title { animation-delay: 0.3s !important; }
+.tasks-preview.animate-text .task-list { animation-delay: 0.4s !important; }
+.animate-badge {
+  animation: badgeEntry 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.1s !important;
+  will-change: opacity, transform, filter;
+}
+
+.animate-card {
+  animation: cardEntry 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.1s !important;
+  will-change: opacity, transform, filter;
+}
+
+.animate-calendar {
+  animation: cardEntry 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.2s !important;
+  will-change: opacity, transform, filter;
+}
+
+.animate-text {
+  animation: textEntry 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.05s !important;
+  will-change: opacity, transform, filter;
+}
+
+/* Removed page-enter override to allow standard fast transitions */

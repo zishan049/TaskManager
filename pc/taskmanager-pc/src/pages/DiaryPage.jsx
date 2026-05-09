@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  Book, PenTool, Calendar, Search, Image as ImageIcon, 
+import {
+  Book, PenTool, Calendar, Search, Image as ImageIcon,
   ChevronRight, ChevronDown, Save, Trash2, Clock, FolderOpen,
-  AlertCircle, Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Quote,
-  Undo, Redo, Shield, Lock, FolderPlus
+  Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Quote,
+  Undo, Redo, Lock, FolderPlus,
+  Heading1, Heading2, Heading3, Strikethrough, Code, Highlighter,
+  Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Minus, CheckSquare, Unlink, Images
 } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import { format } from 'date-fns';
-import { 
-  initDiaryStorage, saveDiaryEntry, loadDiaryEntry, getAllEntries, 
+import {
+  initDiaryStorage, saveDiaryEntry, loadDiaryEntry, getAllEntries,
   saveMedia, getDiaryRoot, deleteDiaryEntry, selectCustomStorage, deleteMedia
 } from '../lib/diaryStorage';
 import { open, ask } from '@tauri-apps/plugin-dialog';
@@ -21,6 +24,11 @@ import ConfirmModal from '../components/ui/ConfirmModal';
 
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 
 const DiaryPage = () => {
   const [entries, setEntries] = useState([]);
@@ -38,6 +46,9 @@ const DiaryPage = () => {
   const [currentRoot, setCurrentRoot] = useState('');
   const [currentMedia, setCurrentMedia] = useState([]);
   const [mediaUrls, setMediaUrls] = useState({});
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const highlightPickerRef = useRef(null);
 
   const createdUrls = useRef(new Set());
   const currentMediaRef = useRef([]);
@@ -46,6 +57,17 @@ const DiaryPage = () => {
   useEffect(() => {
     currentMediaRef.current = currentMedia;
   }, [currentMedia]);
+
+  // Close highlight picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (highlightPickerRef.current && !highlightPickerRef.current.contains(e.target)) {
+        setShowHighlightPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Convert files to Blob URLs for reliable rendering
   useEffect(() => {
@@ -58,10 +80,10 @@ const DiaryPage = () => {
 
       for (const item of currentMedia) {
         if (!item.fileName || !item.fullPath) continue;
-        
+
         const key = item.fileName;
         console.log('DiaryPage: Processing item:', key);
-        
+
         // Only convert if we don't already have a valid Blob URL in state
         if (!mediaUrls[key]) {
           try {
@@ -75,7 +97,7 @@ const DiaryPage = () => {
             const data = await readFile(item.fullPath);
             const blob = new Blob([data]);
             const url = URL.createObjectURL(blob);
-            
+
             if (active) {
               addedUrls[key] = url;
               createdUrls.current.add(url);
@@ -118,15 +140,15 @@ const DiaryPage = () => {
   // Debounced Autosave Trigger
   const triggerAutosave = useCallback((content) => {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    
+
     setSaveStatus('unsaved');
-    
+
     autosaveTimer.current = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        await saveDiaryEntry(selectedDate, { 
+        await saveDiaryEntry(selectedDate, {
           content,
-          media: currentMediaRef.current 
+          media: currentMediaRef.current
         });
         setSaveStatus('saved');
         loadEntries();
@@ -142,9 +164,9 @@ const DiaryPage = () => {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     setSaveStatus('saving');
     try {
-      await saveDiaryEntry(selectedDate, { 
+      await saveDiaryEntry(selectedDate, {
         content,
-        media: media || currentMediaRef.current 
+        media: media || currentMediaRef.current
       });
       setSaveStatus('saved');
       loadEntries();
@@ -156,8 +178,21 @@ const DiaryPage = () => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
       Underline,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: { class: 'diary-link' },
+      }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
       Image.configure({
         inline: true,
         allowBase64: true,
@@ -172,6 +207,18 @@ const DiaryPage = () => {
     },
   });
 
+  const handleAddLink = useCallback(() => {
+    if (!editor) return;
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('Enter URL', previousUrl || 'https://');
+    if (url === null) return;
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  }, [editor]);
+
   useEffect(() => {
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -182,10 +229,10 @@ const DiaryPage = () => {
     try {
       const root = await getDiaryRoot();
       if (!root) return;
-      
+
       const all = await getAllEntries();
       setEntries(all);
-      
+
       // Auto-expand current month
       const currentMonth = format(new Date(), 'yyyy-MM');
       setExpandedGroups(prev => ({ ...prev, [currentMonth]: true }));
@@ -205,7 +252,7 @@ const DiaryPage = () => {
     try {
       const data = await loadDiaryEntry(date);
       console.log('DiaryPage: Loaded entry data:', data);
-      
+
       if (data && editor) {
         editor.commands.setContent(data.content || '');
         const loadedMedia = data.media || [];
@@ -265,27 +312,27 @@ const DiaryPage = () => {
 
   const handleManualSave = async () => {
     if (!editor) return;
-    
+
     // Clear any pending autosave to prevent clashing
     if (autosaveTimer.current) {
       clearTimeout(autosaveTimer.current);
     }
-    
+
     setIsSaving(true);
     setSaveStatus('saving');
-    
+
     try {
       const content = editor.getHTML();
       console.log('Manual save initiated for date:', selectedDate);
-      
-      await saveDiaryEntry(selectedDate, { 
+
+      await saveDiaryEntry(selectedDate, {
         content,
         media: currentMediaRef.current
       });
-      
+
       setSaveStatus('saved');
       console.log('Manual save successful.');
-      
+
       // Refresh the sidebar list
       await loadEntries();
     } catch (err) {
@@ -325,22 +372,22 @@ const DiaryPage = () => {
 
   const confirmMediaDelete = async () => {
     if (mediaToDeleteIndex === null) return;
-    
+
     const item = currentMedia[mediaToDeleteIndex];
     setIsMediaDeleteModalOpen(false);
 
     try {
       // Physically delete from folder
       await deleteMedia(item.fullPath);
-      
+
       // Remove from state
       const newMedia = currentMedia.filter((_, i) => i !== mediaToDeleteIndex);
       setCurrentMedia(newMedia);
       currentMediaRef.current = newMedia;
-      
+
       // Trigger immediate save to update the JSON entry
       if (editor) await immediateSave(editor.getHTML(), newMedia);
-      
+
       setMediaToDeleteIndex(null);
     } catch (err) {
       console.error('Failed to delete media:', err);
@@ -371,8 +418,8 @@ const DiaryPage = () => {
   };
 
   const groupEntries = () => {
-    const filtered = entries.filter(e => 
-      e.date.includes(searchQuery) || 
+    const filtered = entries.filter(e =>
+      e.date.includes(searchQuery) ||
       (e.month && e.month.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (e.year && e.year.toString().includes(searchQuery))
     );
@@ -393,9 +440,10 @@ const DiaryPage = () => {
   const groups = groupEntries();
 
   return (
-    <div className="diary-container">
-      <aside className="diary-sidebar">
-        <div className="sidebar-header">
+    <div className={`diary-page ${isGalleryOpen ? 'gallery-open' : ''}`}>
+      {/* LEFT — Sidebar */}
+      <section className="diary-left">
+        <div className="section-header">
           <div className="header-top">
             <div className="header-title">
               <Book size={20} className="accent" />
@@ -412,7 +460,7 @@ const DiaryPage = () => {
         </div>
 
         <div className="entries-list">
-          <div 
+          <div
             className={`entry-item today ${selectedDate === format(new Date(), 'yyyy-MM-dd') ? 'active' : ''}`}
             onClick={() => {
               if (selectedDate !== format(new Date(), 'yyyy-MM-dd')) {
@@ -447,186 +495,367 @@ const DiaryPage = () => {
             </div>
           ))}
         </div>
-      </aside>
+      </section>
 
-        <main className="diary-editor-container">
-          {!currentRoot ? (
-            <div className="onboarding-placeholder">
-              <div className="placeholder-content">
-                <div className="icon-stack">
-                  <FolderOpen size={48} className="base-icon" />
-                  <Lock size={20} className="overlay-icon" />
+      {/* CENTER — Editor */}
+      <section className="diary-center">
+        {!currentRoot ? (
+          <div className="onboarding-placeholder">
+            <div className="placeholder-content">
+              <div className="icon-stack">
+                <FolderOpen size={48} className="base-icon" />
+                <Lock size={20} className="overlay-icon" />
+              </div>
+              <h2>Your Journal, Your Privacy</h2>
+              <p>Select a local folder to start your private diary. Every word and image stays 100% on your machine.</p>
+              <button className="setup-btn" onClick={handleChangeStorage}>
+                <FolderPlus size={18} />
+                <span>Choose Workspace Folder</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="editor-header">
+              <div className="date-section">
+                <div className="date-main">
+                  <span className="day-name">{format(new Date(selectedDate.replace(/-/g, '/')), 'EEEE')}</span>
+                  <h1>{format(new Date(selectedDate.replace(/-/g, '/')), 'MMMM do, yyyy')}</h1>
                 </div>
-                <h2>Your Journal, Your Privacy</h2>
-                <p>Select a local folder to start your private diary. Every word and image stays 100% on your machine.</p>
-                <button className="setup-btn" onClick={handleChangeStorage}>
-                  <FolderPlus size={18} />
-                  <span>Choose Workspace Folder</span>
+                <div className="editor-meta">
+                  <div className="meta-item">
+                    <Clock size={12} />
+                    <span>{format(new Date(), 'hh:mm a')}</span>
+                  </div>
+                  <div className={`status-pill ${saveStatus}`} title={saveStatus === 'error' ? 'Failed to save. Check storage settings.' : ''}>
+                    <div className="status-dot" />
+                    <span>
+                      {saveStatus === 'saving' ? 'Syncing...' :
+                        saveStatus === 'unsaved' ? 'Changes pending...' :
+                          saveStatus === 'error' ? 'Save Error' :
+                            'Encrypted & Saved'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="editor-controls">
+                <div className="control-group">
+                  <button className="icon-btn add-btn" onClick={handleAddImage} title="Attach Image">
+                    <ImageIcon size={18} />
+                  </button>
+                  <button className="icon-btn delete-btn" onClick={handleDelete} title="Delete Entry">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                <button
+                  className={`icon-btn gallery-toggle-btn ${isGalleryOpen ? 'active' : ''}`}
+                  onClick={() => setIsGalleryOpen(o => !o)}
+                  title={isGalleryOpen ? 'Close Gallery' : 'Open Gallery'}
+                >
+                  <Images size={18} />
+                  {currentMedia.length > 0 && (
+                    <span className="gallery-dot" />
+                  )}
+                </button>
+                <button className="icon-btn save-btn" onClick={handleManualSave} disabled={isSaving} title="Save Entry">
+                  <Save size={18} />
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="editor-inner-card">
-              <div className="editor-header">
-                <div className="date-section">
-                  <div className="date-main">
-                    <span className="day-name">{format(new Date(selectedDate.replace(/-/g, '/')), 'EEEE')}</span>
-                    <h1>{format(new Date(selectedDate.replace(/-/g, '/')), 'MMMM do, yyyy')}</h1>
-                  </div>
-                  <div className="editor-meta">
-                    <div className="meta-item">
-                      <Clock size={12} />
-                      <span>{format(new Date(), 'hh:mm a')}</span>
-                    </div>
-                    <div className={`status-pill ${saveStatus}`} title={saveStatus === 'error' ? 'Failed to save. Check storage settings.' : ''}>
-                      <div className="status-dot" />
-                      <span>
-                        {saveStatus === 'saving' ? 'Syncing...' : 
-                         saveStatus === 'unsaved' ? 'Changes pending...' :
-                         saveStatus === 'error' ? 'Save Error' :
-                         'Encrypted & Saved'}
-                      </span>
-                    </div>
+
+            <div className="editor-toolbar-wrapper">
+              <div className="toolbar-floating">
+                {/* Text Style */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive('bold') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleBold().run()}
+                    title="Bold"
+                  >
+                    <Bold size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('italic') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleItalic().run()}
+                    title="Italic"
+                  >
+                    <Italic size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('underline') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                    title="Underline"
+                  >
+                    <UnderlineIcon size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('strike') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleStrike().run()}
+                    title="Strikethrough"
+                  >
+                    <Strikethrough size={15} />
+                  </button>
+                  {/* Highlight with color picker */}
+                  <div className="highlight-picker-wrapper" ref={highlightPickerRef}>
+                    <button
+                      className={`tool-btn ${editor?.isActive('highlight') ? 'active' : ''}`}
+                      onClick={() => setShowHighlightPicker(v => !v)}
+                      title="Highlight Color"
+                    >
+                      <Highlighter size={15} />
+                    </button>
+                    {showHighlightPicker && (
+                      <div className="highlight-picker-dropdown">
+                        {[
+                          { color: '#fde68a', label: 'Yellow' },
+                          { color: '#86efac', label: 'Green' },
+                          { color: '#67e8f9', label: 'Cyan' },
+                          { color: '#f9a8d4', label: 'Pink' },
+                          { color: '#fdba74', label: 'Orange' },
+                          { color: '#c4b5fd', label: 'Lavender' },
+                          { color: '#fca5a5', label: 'Red' },
+                          { color: '#e2e8f0', label: 'White' },
+                        ].map(({ color, label }) => (
+                          <button
+                            key={color}
+                            className="highlight-swatch"
+                            style={{ background: color }}
+                            title={label}
+                            onClick={() => {
+                              editor?.chain().focus().setHighlight({ color }).run();
+                              setShowHighlightPicker(false);
+                            }}
+                          />
+                        ))}
+                        <button
+                          className="highlight-clear"
+                          title="Remove Highlight"
+                          onClick={() => {
+                            editor?.chain().focus().unsetHighlight().run();
+                            setShowHighlightPicker(false);
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                
-                <div className="editor-controls">
-                  <div className="control-group">
-                    <button className="icon-btn add-btn" onClick={handleAddImage} title="Attach Image">
-                      <ImageIcon size={18} />
+                <div className="tool-divider" />
+
+                {/* Headings */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive('heading', { level: 1 }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                    title="Heading 1"
+                  >
+                    <Heading1 size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('heading', { level: 2 }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                    title="Heading 2"
+                  >
+                    <Heading2 size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('heading', { level: 3 }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+                    title="Heading 3"
+                  >
+                    <Heading3 size={15} />
+                  </button>
+                </div>
+                <div className="tool-divider" />
+
+                {/* Lists & Tasks */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive('bulletList') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                    title="Bullet List"
+                  >
+                    <List size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('orderedList') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                    title="Numbered List"
+                  >
+                    <ListOrdered size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('taskList') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleTaskList().run()}
+                    title="Task List"
+                  >
+                    <CheckSquare size={15} />
+                  </button>
+                </div>
+                <div className="tool-divider" />
+
+                {/* Block elements */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive('blockquote') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+                    title="Quote"
+                  >
+                    <Quote size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive('codeBlock') ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+                    title="Code Block"
+                  >
+                    <Code size={15} />
+                  </button>
+                  <button
+                    className="tool-btn"
+                    onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+                    title="Horizontal Rule"
+                  >
+                    <Minus size={15} />
+                  </button>
+                </div>
+                <div className="tool-divider" />
+
+                {/* Alignment */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+                    title="Align Left"
+                  >
+                    <AlignLeft size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+                    title="Align Center"
+                  >
+                    <AlignCenter size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+                    title="Align Right"
+                  >
+                    <AlignRight size={15} />
+                  </button>
+                  <button
+                    className={`tool-btn ${editor?.isActive({ textAlign: 'justify' }) ? 'active' : ''}`}
+                    onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
+                    title="Justify"
+                  >
+                    <AlignJustify size={15} />
+                  </button>
+                </div>
+                <div className="tool-divider" />
+
+                {/* Link & Undo/Redo */}
+                <div className="toolbar-section">
+                  <button
+                    className={`tool-btn ${editor?.isActive('link') ? 'active' : ''}`}
+                    onClick={handleAddLink}
+                    title="Add Link"
+                  >
+                    <LinkIcon size={15} />
+                  </button>
+                  {editor?.isActive('link') && (
+                    <button
+                      className="tool-btn"
+                      onClick={() => editor?.chain().focus().unsetLink().run()}
+                      title="Remove Link"
+                    >
+                      <Unlink size={15} />
                     </button>
-                    <button className="icon-btn delete-btn" onClick={handleDelete} title="Delete Entry">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                  <button className="action-btn save-btn" onClick={handleManualSave} disabled={isSaving}>
-                    <Save size={16} />
-                    <span>{isSaving ? 'Saving...' : 'Save Now'}</span>
+                  )}
+                </div>
+                <div className="tool-divider" />
+                <div className="toolbar-section">
+                  <button className="tool-btn" onClick={() => editor?.chain().focus().undo().run()} title="Undo">
+                    <Undo size={15} />
+                  </button>
+                  <button className="tool-btn" onClick={() => editor?.chain().focus().redo().run()} title="Redo">
+                    <Redo size={15} />
                   </button>
                 </div>
               </div>
+            </div>
 
-              <div className="editor-toolbar-wrapper">
-                <div className="toolbar-floating">
-                  <div className="toolbar-section">
-                    <button 
-                      className={`tool-btn ${editor?.isActive('bold') ? 'active' : ''}`}
-                      onClick={() => editor?.chain().focus().toggleBold().run()}
-                    >
-                      <Bold size={16} />
-                    </button>
-                    <button 
-                      className={`tool-btn ${editor?.isActive('italic') ? 'active' : ''}`}
-                      onClick={() => editor?.chain().focus().toggleItalic().run()}
-                    >
-                      <Italic size={16} />
-                    </button>
-                    <button 
-                      className={`tool-btn ${editor?.isActive('underline') ? 'active' : ''}`}
-                      onClick={() => editor?.chain().focus().toggleUnderline().run()}
-                    >
-                      <UnderlineIcon size={16} />
-                    </button>
-                  </div>
-                  <div className="tool-divider" />
-                  <div className="toolbar-section">
-                    <button 
-                      className={`tool-btn ${editor?.isActive('bulletList') ? 'active' : ''}`}
-                      onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                    >
-                      <List size={16} />
-                    </button>
-                    <button 
-                      className={`tool-btn ${editor?.isActive('orderedList') ? 'active' : ''}`}
-                      onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-                    >
-                      <ListOrdered size={16} />
-                    </button>
-                  </div>
-                  <div className="tool-divider" />
-                  <div className="toolbar-section">
-                    <button className="tool-btn" onClick={() => editor?.chain().focus().undo().run()}>
-                      <Undo size={16} />
-                    </button>
-                    <button className="tool-btn" onClick={() => editor?.chain().focus().redo().run()}>
-                      <Redo size={16} />
-                    </button>
-                  </div>
+            <div className="editor-viewport">
+              <EditorContent editor={editor} className="tiptap-view" />
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* RIGHT — Media Gallery */}
+      <section className={`diary-right ${isGalleryOpen ? 'open' : ''}`}>
+        <div className="section-header media-header">
+          <ImageIcon size={18} />
+          <span>Media Gallery</span>
+          <span className="count">{currentMedia.length}</span>
+        </div>
+
+        <div className="media-grid">
+          {currentMedia.length > 0 ? (
+            currentMedia.map((item, index) => (
+              <div key={`${item.fileName}-${index}`} className="media-item">
+                <img
+                  src={mediaUrls[item.fileName] || (item.fullPath ? convertFileSrc(item.fullPath.replace(/\\/g, '/')) : '')}
+                  alt="Diary attachment"
+                  loading="lazy"
+                  title={item.fullPath}
+                  data-filename={item.fileName}
+                  onError={(e) => {
+                    console.error("Image load failed for:", item.fileName, "Path:", item.fullPath);
+                  }}
+                />
+                <div className="item-overlay">
+                  <button className="delete-media-btn" onClick={() => handleDeleteMedia(index)}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-
-              <div className="editor-viewport">
-                <EditorContent editor={editor} className="tiptap-view" />
+            ))
+          ) : (
+            <div className="empty-media">
+              <div className="empty-icon-circle">
+                <ImageIcon size={24} />
               </div>
+              <p>Gallery is empty</p>
+              <span>Attach photos to this entry</span>
             </div>
           )}
-        </main>
+        </div>
+      </section>
 
-        <aside className="diary-media-panel">
-          <div className="panel-header">
-            <ImageIcon size={18} />
-            <span>Media Gallery</span>
-            <span className="count">{currentMedia.length}</span>
-          </div>
-          
-          <div className="media-grid">
-            {currentMedia.length > 0 ? (
-              currentMedia.map((item, index) => (
-                <div key={`${item.fileName}-${index}`} className="media-item">
-                  <img 
-                    src={mediaUrls[item.fileName] || (item.fullPath ? convertFileSrc(item.fullPath.replace(/\\/g, '/')) : '')} 
-                    alt="Diary attachment" 
-                    loading="lazy"
-                    title={item.fullPath}
-                    data-filename={item.fileName}
-                    onError={(e) => {
-                      console.error("Image load failed for:", item.fileName, "Path:", item.fullPath);
-                    }}
-                  />
-                  <div style={{ fontSize: '10px', opacity: 0.5, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {mediaUrls[item.fileName] ? 'Blob URL' : 'Asset Protocol'}
-                  </div>
-                  <div className="item-overlay">
-                    <button className="delete-media-btn" onClick={() => handleDeleteMedia(index)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="empty-media">
-                <div className="empty-icon-circle">
-                  <ImageIcon size={24} />
-                </div>
-                <p>Gallery is empty</p>
-                <span>Attach photos to this entry</span>
-              </div>
-            )}
-          </div>
-        </aside>
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Vanish Entry?"
+        message="This will permanently delete this day's entry and all its associated media. This action cannot be undone."
+        confirmText="Delete Permanently"
+        type="danger"
+      />
 
-        <ConfirmModal 
-          isOpen={isDeleteModalOpen}
-          onCancel={() => setIsDeleteModalOpen(false)}
-          onConfirm={confirmDelete}
-          title="Vanish Entry?"
-          message="This will permanently delete this day's entry and all its associated media. This action cannot be undone."
-          confirmText="Delete Permanently"
-          type="danger"
-        />
-
-        <ConfirmModal 
-          isOpen={isMediaDeleteModalOpen}
-          onCancel={() => {
-            setIsMediaDeleteModalOpen(false);
-            setMediaToDeleteIndex(null);
-          }}
-          onConfirm={confirmMediaDelete}
-          title="Delete Image?"
-          message="Are you sure you want to permanently delete this image from your PC? This cannot be undone."
-          confirmText="Delete Permanently"
-          type="danger"
-        />
+      <ConfirmModal
+        isOpen={isMediaDeleteModalOpen}
+        onCancel={() => {
+          setIsMediaDeleteModalOpen(false);
+          setMediaToDeleteIndex(null);
+        }}
+        onConfirm={confirmMediaDelete}
+        title="Delete Image?"
+        message="Are you sure you want to permanently delete this image from your PC? This cannot be undone."
+        confirmText="Delete Permanently"
+        type="danger"
+      />
     </div>
   );
 };

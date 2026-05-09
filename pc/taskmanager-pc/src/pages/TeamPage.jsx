@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTeams } from '../hooks/useTeams';
 import { useTasks } from '../hooks/useTasks';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, UserPlus, Trash2, Send, MessageSquare, Plus, Hash, X, Check, Image as ImageIcon, Loader2, Eraser, ClipboardList, LogOut } from 'lucide-react';
+import { Users, UserPlus, Trash2, Send, MessageSquare, Plus, Hash, X, Check, Image as ImageIcon, Loader2, Eraser, ClipboardList, LogOut, Bell, UserX } from 'lucide-react';
 
 import TeamTasksSidebar from '../components/teams/TeamTasksSidebar';
 import ConfirmModal from '../components/ui/ConfirmModal';
@@ -259,14 +259,16 @@ const TeamPage = () => {
                                 <span className="hud-member-role">{member.role}</span>
                               </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div className="member-actions">
                               {member.user_id !== user.id && (
                                 <button className="ping-btn" onClick={() => handlePingUser(member.user_id, member.username)} title="Ping user">
-                                  <Send size={14} style={{ transform: 'rotate(-45deg)' }} /> Ping
+                                  <Bell size={16} />
                                 </button>
                               )}
                               {activeTeam.created_by === user.id && member.user_id !== user.id && (
-                                <button className="kick-btn" onClick={() => { setMemberToKick(member.user_id); setShowKickConfirm(true); }}><X size={14} /> Kick</button>
+                                <button className="kick-btn" onClick={() => { setMemberToKick(member.user_id); setShowKickConfirm(true); }} title="Kick member">
+                                  <UserX size={16} />
+                                </button>
                               )}
                             </div>
                           </div>
@@ -435,10 +437,9 @@ const TeamPage = () => {
         title="Invite Sent!"
         message={`An invitation has been successfully sent to ${inviteEmail || 'the user'}.`}
         onConfirm={() => { setShowInviteSuccess(false); setInviteEmail(''); }}
-        onCancel={() => { setShowInviteSuccess(false); setInviteEmail(''); }}
         confirmText="Got it"
-        cancelText="Close"
         type="success"
+        singleButton={true}
       />
     </div>
   );

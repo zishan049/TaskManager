@@ -324,28 +324,18 @@ export const TeamsProvider = ({ children }) => {
             .eq('id', newInvite.inviter_id)
             .single();
 
-          if (viewRef.current !== 'team') {
-            // Invite Sound (Clean Chime)
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2353/2353-preview.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => console.error('Audio play failed:', e));
+          // Always play sound and show notification for new invites
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2353/2353-preview.mp3');
+          audio.volume = 0.5;
+          audio.play().catch(e => console.error('Audio play failed:', e));
 
-
-
-
-
-
-
-            addNotification({
-
-              title: 'Team Invitation',
-              message: `${inviter?.username || 'Someone'} invited you to join a team.`,
-              type: 'invite',
-              duration: 10000,
-              onClick: () => setCurrentView('team')
-            });
-
-          }
+          addNotification({
+            title: 'Team Invitation',
+            message: `${inviter?.username || 'Someone'} invited you to join a team.`,
+            type: 'invite',
+            duration: 10000,
+            onClick: () => setCurrentView('team')
+          });
           
           fetchInvites();
         }

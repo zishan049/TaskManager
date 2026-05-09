@@ -14,8 +14,7 @@ export const useHistory = () => {
         .from('task_history')
         .select(`*, tasks(title)`)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
       if (error) throw error;
       setHistory(data || []);
     } catch (err) {
@@ -31,11 +30,22 @@ export const useHistory = () => {
   }, [user]);
 
   const clearHistory = async () => {
+    if (!user) return { error: 'No user session' };
     try {
-      const { error } = await supabase.from('task_history').delete().eq('user_id', user.id);
-      if (error) throw error;
+      console.log('Attempting to clear history for user:', user.id);
+      const { error, count } = await supabase
+        .from('task_history')
+        .delete({ count: 'exact' })
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
+      
+      console.log('Successfully cleared history. Rows affected:', count);
       setHistory([]);
-      return { error: null };
+      return { error: null, count };
     } catch (err) {
       console.error('Error clearing history:', err.message);
       return { error: err };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Palette, Zap, Crown, Droplets, Power, Clock } from 'lucide-react';
+import { User, Mail, Lock, Trash2, Save, RefreshCw, LogOut, CheckCircle2, Sun, Moon, Palette, Zap, Crown, Droplets, Power, Clock, Keyboard } from 'lucide-react';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -8,6 +8,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+import DashboardSettings from '../components/settings/DashboardSettings';
 
 const SettingsPage = () => {
   const { user, profile, updateProfile, updatePassword, signOut, deleteAccount } = useAuth();
@@ -208,11 +209,11 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="settings-page">
-      <div className="page-header" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Account Settings</h2>
-          <p className="text-secondary">Manage your profile and security preferences.</p>
+    <div className="settings-page" style={{ padding: 'var(--space-xl) var(--space-2xl)', maxWidth: '1400px', margin: '0 auto' }}>
+      <div className="page-header" style={{ marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.5px' }}>Account Settings</h2>
+          <p className="text-secondary" style={{ fontSize: '1rem' }}>Manage your profile, interface, and security preferences.</p>
         </div>
       </div>
 
@@ -231,7 +232,7 @@ const SettingsPage = () => {
             </div>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
             {/* Left Column: Profile Info */}
             <div className="settings-section">
               <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
@@ -248,14 +249,14 @@ const SettingsPage = () => {
                 <div className="input-field" style={{ marginTop: '1rem' }}><label>Username</label><div className="input-wrapper"><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" /></div></div>
                 <div className="input-field" style={{ marginTop: '1rem' }}>
                   <label>Bio (Operative Status)</label>
-                  <div className="input-wrapper"><textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about your mission..." rows={3} className="modern-input" style={{ width: '100%', padding: '0.75rem', borderRadius: '12px' }} /></div>
+                  <div className="input-wrapper"><textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about your mission..." rows={3} className="modern-input" style={{ width: '100%', padding: '0.75rem 0', borderRadius: '0', borderBottom: '1px solid var(--border-color)' }} /></div>
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', gap: '8px' }} disabled={loading}><Save size={16} /> Save Profile</button>
               </form>
             </div>
 
             {/* Right Column: Password Update */}
-            <div className="settings-section" style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '3rem' }}>
+            <div className="settings-section" style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '2rem' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
                 <Lock size={16} /> Security Credentials
               </h3>
@@ -292,7 +293,11 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+        <div className="settings-grid-secondary" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', 
+          gap: '2rem' 
+        }}>
           <div className="card">
           <div className="card-title"><Palette size={18} /><span>Interface Styles</span></div>
           <p className="text-secondary text-sm" style={{ marginTop: '0.5rem' }}>Personalize your tactical interface.</p>
@@ -306,7 +311,7 @@ const SettingsPage = () => {
             ].map(t => (
 
               <button key={t.id} className={`theme-btn ${theme === t.id ? 'active' : ''}`} onClick={() => handleThemeChange(t)}
-                style={{ padding: '1rem 0.5rem', borderRadius: '12px', border: '1.5px solid var(--border-color)', background: theme === t.id ? 'var(--surface-2)' : 'transparent', borderColor: theme === t.id ? t.color : 'var(--border-color)', boxShadow: theme === t.id ? `0 8px 20px -8px ${t.color}` : 'none', transform: theme === t.id ? 'translateY(-2px)' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s var(--transition-smooth)' }}>
+                style={{ padding: '1rem 0.5rem', borderRadius: '0', borderBottom: '2px solid transparent', borderBottomColor: theme === t.id ? t.color : 'transparent', background: 'transparent', transform: theme === t.id ? 'translateY(-2px)' : 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s var(--transition-smooth)' }}>
                 <t.icon size={20} color={theme === t.id ? t.color : 'var(--text-tertiary)'} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: theme === t.id ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{t.label}</span>
               </button>
@@ -314,90 +319,63 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-title"><Zap size={18} /><span>Dashboard Preferences</span></div>
-          <p className="text-secondary text-sm" style={{ marginTop: '0.5rem' }}>Customize your primary workstation view.</p>
-          
-          <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ 
-              background: 'var(--surface-2)', 
-              padding: '1rem', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <RefreshCw size={16} className={dashboardSettings.showClock ? 'text-primary' : 'text-secondary'} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span className="text-sm font-semibold">Show Operational Clock</span>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Display real-time clock in stats row</span>
-                </div>
-              </div>
-              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={dashboardSettings.showClock} 
-                  onChange={handleToggleClock}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: 'absolute',
-                  cursor: 'pointer',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  backgroundColor: dashboardSettings.showClock ? 'var(--primary-accent)' : 'var(--border-color)',
-                  transition: '.4s',
-                  borderRadius: '34px'
-                }}>
-                  <span style={{
-                    position: 'absolute',
-                    height: '16px', width: '16px',
-                    left: '3px', bottom: '3px',
-                    backgroundColor: 'white',
-                    transition: '.4s',
-                    borderRadius: '50%',
-                    transform: dashboardSettings.showClock ? 'translateX(18px)' : 'translateX(0)'
-                  }} />
-                </span>
-              </label>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginTop: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Clock size={16} className="text-primary" />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span className="text-sm font-semibold">24-Hour Format</span>
-                  <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Switch between 12h and 24h display</span>
+        <DashboardSettings 
+          dashboardSettings={dashboardSettings}
+          onToggleClock={handleToggleClock}
+          onToggleHourFormat={handleToggleHourFormat}
+        />
+
+        <div className="card">
+          <div className="card-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Keyboard size={18} />
+              <span>Keyboard Shortcuts</span>
+            </div>
+          </div>
+          <p className="text-secondary text-sm" style={{ marginTop: '0.5rem' }}>Master your workflow with quick commands.</p>
+          
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {[
+              { keys: ['F11'], label: 'Toggle Fullscreen' },
+              { keys: ['Esc'], label: 'Exit Fullscreen' },
+              { keys: ['Alt', 'H'], label: 'Jump to Home' },
+              { keys: ['Alt', 'T'], label: 'Jump to Team' },
+              { keys: ['Alt', 'D'], label: 'Jump to Diary' },
+              { keys: ['Alt', 'S'], label: 'Jump to Settings' },
+              { keys: ['Alt', 'Y'], label: 'Jump to History' },
+              { keys: ['Alt', 'Q'], label: 'Toggle Quick Add' },
+            ].map((s, i) => (
+              <div key={i} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '0.5rem 0',
+                borderBottom: i === 7 ? 'none' : '1px solid var(--border-color)',
+                opacity: 0.9
+              }}>
+                <span className="text-sm" style={{ fontWeight: 500 }}>{s.label}</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {s.keys.map((k, ki) => (
+                    <React.Fragment key={ki}>
+                      <kbd style={{
+                        background: 'var(--surface-2)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        padding: '2px 6px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        minWidth: '24px',
+                        textAlign: 'center',
+                        boxShadow: '0 2px 0 var(--border-color)'
+                      }}>{k}</kbd>
+                      {ki < s.keys.length - 1 && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>+</span>}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
-              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={!dashboardSettings.hour12} 
-                  onChange={handleToggleHourFormat}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: 'absolute',
-                  cursor: 'pointer',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  backgroundColor: !dashboardSettings.hour12 ? 'var(--primary-accent)' : 'var(--border-color)',
-                  transition: '.4s',
-                  borderRadius: '34px'
-                }}>
-                  <span style={{
-                    position: 'absolute',
-                    height: '16px', width: '16px',
-                    left: '3px', bottom: '3px',
-                    backgroundColor: 'white',
-                    transition: '.4s',
-                    borderRadius: '50%',
-                    transform: !dashboardSettings.hour12 ? 'translateX(18px)' : 'translateX(0)'
-                  }} />
-                </span>
-              </label>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -407,10 +385,10 @@ const SettingsPage = () => {
           
           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ 
-              background: 'var(--surface-2)', 
-              padding: '1rem', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)',
+              background: 'transparent', 
+              padding: '1rem 0', 
+              borderRadius: '0', 
+              borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -467,7 +445,7 @@ const SettingsPage = () => {
               </div>
             )}
 
-            <div style={{ background: 'var(--surface-2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div style={{ background: 'transparent', padding: '1rem 0', borderRadius: '0', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="text-sm font-semibold">Current Version</span>
                 <span className="badge" style={{ background: 'var(--primary-accent)', color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>v{currentAppVersion}</span>

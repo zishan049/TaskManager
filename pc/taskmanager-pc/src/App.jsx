@@ -2,20 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { version } from '../package.json';
 import { useAuth } from './contexts/AuthContext';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import { useTasks } from './hooks/useTasks';
-import { ListTodo } from 'lucide-react';
-import TitleBar from './components/TitleBar';
+import { useTasks } from './hooks/useTasks';import TitleBar from './components/TitleBar';
 import MainLayout from './components/layout/MainLayout';
 import AuthPage from './pages/AuthPage';
-import TaskList from './components/tasks/TaskList';
-import QuickAdd from './components/tasks/QuickAdd';
+import HomePage from './pages/HomePage';
 import TeamPage from './pages/TeamPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import DiaryPage from './pages/DiaryPage';
 import TaskSidebar from './components/tasks/TaskSidebar';
-import MiniCalendar from './components/ui/MiniCalendar';
+import QuickAdd from './components/tasks/QuickAdd';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ContextMenu from './components/ui/ContextMenu';
 import { useNavigation } from './contexts/NavigationContext';
@@ -39,6 +37,7 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
 
 
 
@@ -71,6 +70,62 @@ function AppContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      // F11: Toggle Fullscreen
+      if (e.key === 'F11') {
+        e.preventDefault();
+        const appWindow = getCurrentWindow();
+        const isFullscreen = await appWindow.isFullscreen();
+        await appWindow.setFullscreen(!isFullscreen);
+      }
+
+      // Escape: Exit Fullscreen
+      if (e.key === 'Escape') {
+        const appWindow = getCurrentWindow();
+        const isFullscreen = await appWindow.isFullscreen();
+        if (isFullscreen) {
+          await appWindow.setFullscreen(false);
+        }
+      }
+
+      // Navigation Shortcuts (Alt + Key)
+      if (e.altKey) {
+        switch (e.key.toLowerCase()) {
+          case 'h':
+          case 'home':
+            e.preventDefault();
+            setCurrentView('home');
+            break;
+          case 't':
+            e.preventDefault();
+            setCurrentView('team');
+            break;
+          case 'd':
+            e.preventDefault();
+            setCurrentView('diary');
+            break;
+          case 's':
+            e.preventDefault();
+            setCurrentView('settings');
+            break;
+          case 'y': // HistorY
+            e.preventDefault();
+            setCurrentView('history');
+            break;
+          case 'q':
+            e.preventDefault();
+            setIsQuickAddOpen(prev => !prev);
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setCurrentView]);
+
   const handleLogout = async () => {
 
     setIsLoggingOut(true);
@@ -89,46 +144,10 @@ function AppContent() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [calendarFilterDate, setCalendarFilterDate] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [dashboardSettings, setDashboardSettings] = useState(() => {
-    const saved = localStorage.getItem('dashboard_settings');
-    const settings = saved ? JSON.parse(saved) : { showClock: true, hour12: true };
-    if (settings.hour12 === undefined) settings.hour12 = true;
-    return settings;
-  });
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem('dashboard_settings');
-      if (saved) setDashboardSettings(JSON.parse(saved));
-    };
-    window.addEventListener('dashboard_settings_updated', handleStorageChange);
-    return () => window.removeEventListener('dashboard_settings_updated', handleStorageChange);
-  }, []);
 
   const handleSplashComplete = React.useCallback(() => {
     setShowSplash(false);
   }, []);
-
-  useEffect(() => {
-    if (showSplash) return;
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, [showSplash]);
-
-  const visibleTasks = React.useMemo(() => {
-    if (!tasks) return [];
-    if (!calendarFilterDate) return tasks;
-    const filterDate = new Date(calendarFilterDate);
-    return tasks.filter(t => {
-      if (!t.due_date) return false;
-      const taskDate = new Date(t.due_date);
-      return taskDate.getDate() === filterDate.getDate() &&
-             taskDate.getMonth() === filterDate.getMonth() &&
-             taskDate.getFullYear() === filterDate.getFullYear();
-    });
-  }, [tasks, calendarFilterDate]);
 
   useEffect(() => {
     if (user) {
@@ -141,7 +160,7 @@ function AppContent() {
   }
 
   if (isLoggingOut) {
-    return <LoadingScreen onComplete={() => {}} duration={2500} title="See you soon!" status="Signing you out safely..." />;
+    return <LoadingScreen onComplete={() => {}} duration={2500} title="See you soon!" status="Signing you out safely..." isLogout={true} />;
   }
 
 
@@ -157,60 +176,15 @@ function AppContent() {
     switch (currentView) {
       case 'home':
         return (
-          <div className="dashboard">
-            <section className="welcome-section">
-              <div className="welcome-header animate-text">
-                <img src="/favicon.svg" alt="logo" className="accent" width={24} height={24} />
-                <h2 className="welcome-title">
-                  Hello, {profile?.username || user.user_metadata?.username || user.email?.split('@')[0]}
-                </h2>
-              </div>
-              <p className="welcome-subtitle animate-text">
-                {profile?.bio || "Here's what's happening with your tasks today."}
-              </p>
-            </section>
-
-            <div className="stats-row">
-              <div className="stat-box animate-card">
-                <span className="stat-num">{(tasks || []).filter(t => t.status !== 'done').length}</span>
-                <span className="stat-label">To Do</span>
-              </div>
-              <div className="stat-box animate-card">
-                <span className="stat-num" style={{ color: 'var(--success)' }}>{(tasks || []).filter(t => t.status === 'done').length}</span>
-                <span className="stat-label">Done</span>
-              </div>
-              <div className="stat-box animate-card">
-                <span className="stat-num" style={{ color: 'var(--primary-accent)' }}>
-                  {tasks?.length > 0 ? Math.round(((tasks || []).filter(t => t.status === 'done').length / tasks.length) * 100) : 0}%
-                </span>
-                <span className="stat-label">Productivity</span>
-              </div>
-              <div className={`stat-box clock-card animate-card ${!dashboardSettings.showClock ? 'hidden' : ''}`}>
-                  <span className="clock-time">
-                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: dashboardSettings.hour12 })}
-                  </span>
-                <span className="stat-label">{currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-              </div>
-            </div>
-
-            <div className="dashboard-main-grid">
-              <section className="tasks-preview">
-                <div className="card-title animate-text"><ListTodo size={18} /><span>Active Tasks</span></div>
-                <div className="animate-text">
-                  <TaskList 
-                    tasks={visibleTasks} 
-                    loading={tasksLoading} 
-                    onUpdate={updateTask}
-                    onDelete={deleteTask}
-                    onTaskClick={(task) => { setSelectedTaskId(task.id); setIsSidebarOpen(true); }}
-                  />
-                </div>
-              </section>
-              <aside className="dashboard-sidebar animate-calendar">
-                <MiniCalendar tasks={tasks || []} selectedDate={calendarFilterDate} onSelectDate={setCalendarFilterDate} />
-              </aside>
-            </div>
-          </div>
+          <HomePage 
+            profile={profile}
+            user={user}
+            tasks={tasks}
+            tasksLoading={tasksLoading}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
+            onTaskClick={(task) => { setSelectedTaskId(task.id); setIsSidebarOpen(true); }}
+          />
         );
       case 'team':
         return <TeamPage />;
@@ -224,6 +198,7 @@ function AppContent() {
         return null;
     }
   };
+
 
   return (
     <>

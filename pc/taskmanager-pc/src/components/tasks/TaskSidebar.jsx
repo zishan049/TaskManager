@@ -134,26 +134,28 @@ const TaskSidebar = ({ task, isOpen, onClose }) => {
       <div className={`sidebar-overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
       <div className={`task-sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="sidebar-header-top">
-            <div className="sidebar-status-wrap">
-              <button className={`task-status-toggle-large ${task.status}`} onClick={handleToggleStatus} title="Toggle Status">
-                {task.status === 'done' ? <CheckCircle2 size={24} /> : <Circle size={24} />}
-              </button>
+          <div className="sidebar-header-row">
+            <div className="sidebar-title-area">
+              <textarea 
+                className="sidebar-title-input" 
+                value={editTitle} 
+                onChange={e => setEditTitle(e.target.value)} 
+                onBlur={() => handleSaveField('title', editTitle)}
+                rows="1"
+                placeholder="Task Title"
+              />
             </div>
-            <div className="sidebar-header-actions">
-              <button onClick={() => setShowDeleteConfirm(true)} className="sidebar-action-btn delete" title="Delete Task"><Trash2 size={18} /></button>
-              <button onClick={onClose} className="sidebar-action-btn" title="Close"><X size={20} /></button>
+            <div className="sidebar-header-actions-group">
+              <div className="sidebar-status-wrap">
+                <button className={`task-status-toggle-large ${task.status}`} onClick={handleToggleStatus} title="Toggle Status">
+                  {task.status === 'done' ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                </button>
+              </div>
+              <div className="sidebar-header-actions">
+                <button onClick={() => setShowDeleteConfirm(true)} className="sidebar-action-btn delete" title="Delete Task"><Trash2 size={18} /></button>
+                <button onClick={onClose} className="sidebar-action-btn" title="Close"><X size={20} /></button>
+              </div>
             </div>
-          </div>
-          <div className="sidebar-title-area">
-            <textarea 
-              className="sidebar-title-input" 
-              value={editTitle} 
-              onChange={e => setEditTitle(e.target.value)} 
-              onBlur={() => handleSaveField('title', editTitle)}
-              rows="1"
-              placeholder="Task Title"
-            />
           </div>
         </div>
 

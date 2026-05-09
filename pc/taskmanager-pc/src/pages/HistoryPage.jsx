@@ -2,11 +2,13 @@ import React from 'react';
 import { useHistory } from '../hooks/useHistory';
 import { Activity, Clock, List, Trash2, LayoutGrid } from 'lucide-react';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import Win10Spinner from '../components/ui/Win10Spinner';
 
 const HistoryPage = () => {
   const { history, loading, clearHistory } = useHistory();
   const [showClearConfirm, setShowClearConfirm] = React.useState(false);
   const [viewMode, setViewMode] = React.useState(() => localStorage.getItem('history_view_mode') || 'list');
+  const [gridSize, setGridSize] = React.useState(() => parseInt(localStorage.getItem('history_grid_size')) || 3);
 
   const toggleViewMode = () => {
     const newMode = viewMode === 'list' ? 'grid' : 'list';
@@ -14,12 +16,22 @@ const HistoryPage = () => {
     localStorage.setItem('history_view_mode', newMode);
   };
 
+  const handleGridSizeChange = (e) => {
+    const size = parseInt(e.target.value);
+    setGridSize(size);
+    localStorage.setItem('history_grid_size', size);
+  };
+
   const handleClear = async () => {
     await clearHistory();
     setShowClearConfirm(false);
   };
 
-  if (loading) return (<div className="loading-screen"><div className="loader"></div><p className="text-secondary text-sm">Loading history...</p></div>);
+  if (loading) return (
+    <div className="history-loading-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '20px' }}>
+      <Win10Spinner size={48} />
+    </div>
+  );
 
   return (
     <div className="history-page page-enter">
@@ -35,10 +47,32 @@ const HistoryPage = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', padding: '8px 12px' }}
             title={viewMode === 'list' ? 'Switch to Grid View' : 'Switch to List View'}
           >
-
             {viewMode === 'list' ? <LayoutGrid size={16} /> : <List size={16} />}
             {viewMode === 'list' ? 'Grid View' : 'List View'}
           </button>
+          {viewMode === 'grid' && (
+            <div className="grid-size-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface-2)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <LayoutGrid size={14} className="text-tertiary" />
+              <select 
+                value={gridSize} 
+                onChange={handleGridSizeChange}
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'var(--text-primary)', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={2}>2 Columns</option>
+                <option value={3}>3 Columns</option>
+                <option value={4}>4 Columns</option>
+                <option value={5}>5 Columns</option>
+              </select>
+            </div>
+          )}
           {history.length > 0 && (
             <button className="btn btn-secondary danger-hover" onClick={() => setShowClearConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', padding: '8px 16px' }}>
               <Trash2 size={16} /> Clear History
@@ -52,7 +86,10 @@ const HistoryPage = () => {
             <List size={48} style={{ marginBottom: '1rem' }} /><p className="text-secondary">No activity recorded yet.</p>
           </div>
         ) : (
-          <div className={`log-list ${viewMode}-mode`}>
+          <div 
+            className={`log-list ${viewMode}-mode`} 
+            style={viewMode === 'grid' ? { '--grid-columns': gridSize } : {}}
+          >
             {history.map(entry => (
               <div key={entry.id} className="log-item card">
                 <div className="log-icon accent">

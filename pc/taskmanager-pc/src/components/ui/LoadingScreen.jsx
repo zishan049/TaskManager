@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import Win10Spinner from './Win10Spinner';
 
-const LoadingScreen = ({ onComplete, duration = 3000 }) => {
+const LoadingScreen = ({ onComplete, duration = 3000, title, status, isLogout = false }) => {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    // Start fade out only when the main duration is finished
     const fadeTimer = setTimeout(() => {
       setFadeOut(true);
-    }, duration - 800);
+    }, duration);
 
+    // Call onComplete after the 800ms CSS transition finishes
     const completeTimer = setTimeout(() => {
       onComplete();
-    }, duration);
+    }, duration + 800);
 
     return () => {
       clearTimeout(fadeTimer);
@@ -24,9 +27,18 @@ const LoadingScreen = ({ onComplete, duration = 3000 }) => {
         <div className="splash-logo-container">
           <img src="/favicon.svg" alt="Logo" className="splash-logo" />
         </div>
-        <div className="splash-loader-bar">
-          <div className="splash-progress" style={{ animationDuration: `${duration}ms` }} />
-        </div>
+        
+        {title && <h1 className="splash-title">{title}</h1>}
+        
+        {isLogout ? (
+          <div className="splash-loader-bar">
+            <div className="splash-progress" style={{ animationDuration: `${duration}ms` }} />
+          </div>
+        ) : (
+          <Win10Spinner />
+        )}
+
+        {status && <p className="splash-status">{status}</p>}
       </div>
     </div>
   );
